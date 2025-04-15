@@ -1,6 +1,7 @@
 # Echo Chamber - Bazaar Combat Simulator
 
-A web-based combat simulator for testing item combinations and strategies in Bazaar. This tool allows players to experiment with different item builds, enchantments, and combat scenarios.
+This was born from for the silly need to know if I could beat Infernal or Lich with my current run build.
+Still WIP at the moment.
 
 ## Features
 
