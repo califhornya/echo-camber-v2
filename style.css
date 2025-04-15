@@ -392,3 +392,24 @@ body {
     background: #e3f2fd;
     color: #1976d2;
 }
+
+.log-group {
+    margin-bottom: 16px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 4px;
+}
+
+.log-timestamp {
+    font-weight: bold;
+    color: #666;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+}
+
+.log-status {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #ddd;
+}

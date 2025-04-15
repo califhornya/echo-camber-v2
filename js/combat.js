@@ -7,7 +7,7 @@ export class CombatSimulator {
         
         // Combat state
         this.playerState = {
-            hp: 100,  // We can make this configurable later
+            hp: 250,  // We can make this configurable later
             shield: 0,
             poison: 0,
             burn: 0
@@ -21,17 +21,49 @@ export class CombatSimulator {
         };
 
         this.logs = [];
+        this.currentTimeLogs = [];  // Buffer for current timestamp logs
+        this.groupedLogs = [];      // Final grouped logs
     }
 
     log(message, type = 'default') {
-        this.logs.push({ message, type });
+        this.currentTimeLogs.push({ message, type });
+    }
+
+    // New method to flush current time logs and create a grouped entry
+    flushTimeLogs() {
+        if (this.currentTimeLogs.length > 0) {
+            // Separate action logs from status logs
+            const actionLogs = this.currentTimeLogs.filter(log => 
+                !log.message.includes('HP:') && !log.message.includes('Shield:')
+            );
+            const statusLogs = this.currentTimeLogs.filter(log => 
+                log.message.includes('HP:') || log.message.includes('Shield:')
+            );
+
+            this.groupedLogs.push({
+                timestamp: this.time,
+                actions: actionLogs,
+                status: statusLogs
+            });
+            this.currentTimeLogs = [];  // Clear the buffer
+        }
     }
 
     displayLogs() {
         const logContainer = document.getElementById('combat-log');
-        logContainer.innerHTML = this.logs
-            .map(log => `<div class="log-entry log-${log.type}">${log.message}</div>`)
-            .join('');
+        logContainer.innerHTML = this.groupedLogs
+            .map(timeGroup => `
+                <div class="log-group">
+                    <div class="log-timestamp">t=${timeGroup.timestamp}s</div>
+                    ${timeGroup.actions.map(log => 
+                        `<div class="log-entry log-${log.type}">${log.message}</div>`
+                    ).join('')}
+                    ${timeGroup.status.length > 0 ? '<div class="log-status">' + 
+                        timeGroup.status.map(log => 
+                            `<div class="log-entry log-${log.type}">${log.message}</div>`
+                        ).join('') + '</div>' : ''}
+                </div>
+            `).join('');
         logContainer.scrollTop = logContainer.scrollHeight;
     }
 
@@ -72,24 +104,23 @@ export class CombatSimulator {
     }
 
     initializeItems() {
-        // Set initial trigger times for all items
+        // Set initial trigger times for all items based on their cooldown
         [...this.playerBoard, ...this.monsterBoard.slots]
             .filter(item => item)
-            .forEach(item => {
+            .forEach((item, index) => {
+                // Set first trigger time to the item's cooldown
                 item.nextTrigger = item.cooldown;
                 item.nextUnfreeze = null;
+                // Add a unique instance ID combining board position and timestamp
+                item.instanceId = `${item.name}_${index}_${Date.now()}`;
             });
     }
 
     processTurn() {
-        // Process triggers for this time step
         this.processTriggers();
-        
-        // Apply DOT effects
         this.applyDotEffects();
-        
-        // Process special effects (like Hard Shell for Coconut Crab)
         this.processSpecialEffects();
+        this.flushTimeLogs();  // Flush logs after processing the turn
     }
 
     processTriggers() {
@@ -283,7 +314,7 @@ export class CombatSimulator {
     resetState() {
         // Reset combat state
         this.playerState = {
-            hp: 100,
+            hp: 250,
             shield: 0,
             poison: 0,
             burn: 0

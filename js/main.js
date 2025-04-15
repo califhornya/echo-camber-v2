@@ -59,13 +59,16 @@ function handleItemSelect(item) {
     const slotIndex = findLeftmostEmptySlot(item.size);
     
     if (slotIndex !== -1) {
-        // Place the item in the global state
+        // Create a deep copy of the item
+        const itemCopy = JSON.parse(JSON.stringify(item));
+        
+        // Place the copied item in the global state
         for (let i = 0; i < item.size; i++) {
-            window.playerBoard[slotIndex + i] = item;
+            window.playerBoard[slotIndex + i] = itemCopy;
         }
         
-        // Render the item
-        renderItem(item, slotIndex, 'player-board');
+        // Render the copied item
+        renderItem(itemCopy, slotIndex, 'player-board');
         
         // Clear search input and results after placing
         const searchInput = document.getElementById('search-input');
