@@ -1,0 +1,394 @@
+:root {
+    --slot-width: 128px;
+    --slot-height: 256px;
+    --gap: 1px;
+}
+
+body {
+    font-family: sans-serif;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.board {
+    display: flex;
+    width: calc((var(--slot-width) + var(--gap)) * 10);
+    min-height: var(--slot-height);
+    
+    border-radius: 8px;
+    
+    background: rgba(0, 0, 0, 0.027);
+    position: relative;
+}
+
+.slot {
+    width: var(--slot-width);
+    min-height: var(--slot-height);
+    
+    
+    position: relative;
+    display: flex;
+    align-items: center;
+    
+}
+
+.slot:last-child {
+    border-right: none;
+}
+
+.item {
+    position: absolute;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: var(--slot-height);
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.item-image-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    transform: scale(1.2);
+    object-position: center;
+    display: block;
+}
+
+/* Size-specific styles with exact dimensions */
+.size-1 {
+    width: var(--slot-width);
+}
+
+.size-2 {
+    width: calc(var(--slot-width) * 2);
+}
+
+.size-3 {
+    width: calc(var(--slot-width) * 3);
+}
+
+/* Remove specific object-fit overrides for different sizes */
+.size-1 .item-image {
+    transform: scale(1);
+}
+
+.size-2 .item-image {
+    transform: scale(1.2);
+}
+
+.size-3 .item-image {
+    transform: scale(1, 1);
+}
+
+/* For size-2 items, make sure the image spans both slots */
+.size-2 .item-image-container {
+    grid-column: span 2;
+}
+
+/* For size-3 items */
+.size-3 .item-image-container {
+    grid-column: span 3;
+}
+
+/* Item content overlay */
+.item-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    padding: 16px 8px 8px;
+    color: white;
+}
+
+.item-name {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.item-type {
+    font-size: 12px;
+    opacity: 0.9;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Board-specific colors */
+.monster-board .item {
+    /* border: 2px solid #f44336; */
+}
+
+.player-board .item {
+    border: 2px solid #050505;
+}
+
+/* Occupied slot styling */
+.slot.occupied {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* Search Section */
+.search-section {
+    width: 80%;
+    margin: 20px auto;
+    position: relative;
+}
+
+#search-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+}
+
+#search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.search-result-item:hover {
+    background-color: #f5f5f5;
+}
+
+/* Add to existing CSS */
+.combat-section {
+    width: 80%;
+    margin: 20px auto;
+    text-align: center;
+}
+
+#simulate-combat {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.combat-summary {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.combat-summary h3 {
+    margin-top: 0;
+}
+
+#combat-log {
+    width: 100%;
+    height: 300px;
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    overflow-y: auto;
+    font-family: monospace;
+    text-align: left;
+    background: #f8f8f8;
+}
+
+.log-entry {
+    margin: 2px 0;
+    padding: 2px 5px;
+}
+
+.log-damage { color: #f44336; }
+.log-heal { color: #4CAF50; }
+.log-shield { color: #2196F3; }
+.log-freeze { color: #00BCD4; }
+.log-trigger { color: #9C27B0; }
+.log-state { color: #795548; }
+
+.enchantment-section {
+    display: none;
+}
+
+.item-enchant-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.item-enchant-button:hover {
+    background: #f0f0f0;
+}
+
+.enchantment-dropdown {
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+    min-width: 180px;
+    padding: 4px 0;
+}
+
+.enchantment-dropdown.active {
+    display: block;
+}
+
+.enchantment-option {
+    padding: 8px 16px;
+    cursor: pointer;
+    white-space: normal;
+    border-bottom: 1px solid #eee;
+}
+
+.enchantment-option:last-child {
+    border-bottom: none;
+}
+
+.enchantment-option:hover {
+    background: #f5f5f5;
+}
+
+.enchantment-option.selected {
+    background: #4CAF50;
+    color: white;
+}
+
+/* Add enchantment indicator to items */
+.item.enchanted::after {
+    content: '✨';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 16px;
+}
+
+/* Add enchantment border colors */
+.item.enchanted-heavy { border-color: #8B4513; }
+.item.enchanted-icy { border-color: #00BCD4; }
+.item.enchanted-turbo { border-color: #FFD700; }
+.item.enchanted-shielded { border-color: #2196F3; }
+.item.enchanted-restorative { border-color: #4CAF50; }
+.item.enchanted-toxic { border-color: #9C27B0; }
+.item.enchanted-fiery { border-color: #FF5722; }
+.item.enchanted-shiny { border-color: #E91E63; }
+.item.enchanted-deadly { border-color: #f44336; }
+.item.enchanted-radiant { border-color: #FFF176; }
+.item.enchanted-obsidian { border-color: #212121; }
+
+/* Update enchantment dropdown styles */
+.enchantment-option.remove-enchant {
+    border-top: 1px solid #eee;
+    color: #f44336;
+    font-weight: bold;
+}
+
+/* Update remove button styles */
+.item-remove-button {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(255, 0, 0, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 10;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.item-remove-button:hover {
+    background: rgba(255, 0, 0, 1);
+}
+
+/* Update tooltip styles */
+.enchantment-tooltip {
+    visibility: hidden;
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: pre-line;
+    width: max-content;
+    max-width: 200px;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.enchantment-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+}
+
+.enchantment-name:hover .enchantment-tooltip {
+    visibility: visible;
+}
+
+.enchantment-effect {
+    color: #4CAF50;
+    margin-left: 12px;
+}
+
+.enchantment-remove {
+    color: #f44336;
+    font-weight: bold;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    margin-left: 8px;
+}
+
+.enchantment-remove:hover {
+    color: #d32f2f;
+}
+
+.enchantment-option.selected {
+    background: #e3f2fd;
+    color: #1976d2;
+}
