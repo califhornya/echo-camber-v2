@@ -1,5 +1,5 @@
 import { monsterBuild } from './database.js';
-import { applyEnchantment } from './combat.js';
+import { applyEnchantment, removeEnchantment } from './combat.js';
 
 const ENCHANTMENT_TYPES = ['heavy', 'icy', 'turbo', 'shielded', 'restorative', 
     'toxic', 'fiery', 'shiny', 'deadly', 'radiant', 'obsidian'];
@@ -29,6 +29,9 @@ export function renderBoard(boardClass, isMonster = false) {
 export function renderItem(item, slotIndex, boardClass = 'player-board') {
     const slot = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex}"]`);
     if (!slot) return;
+    
+    // Clear the slot first
+    slot.innerHTML = '';
     
     const itemElement = document.createElement('div');
     itemElement.className = `item size-${item.size}`;
@@ -183,103 +186,74 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
         itemElement.appendChild(dropdown);
     }
     
-    // Create item content
-    const content = document.createElement('div');
-    content.className = 'item-content';
-
-    // Helper function to get item effects description
-    function getItemEffects(item) {
-        const effects = [];
-        
-        // Add base effects
-        if (item.damage && !item.enchantment) effects.push(`Deal ${item.damage} damage.`);
-        if (item.shield && !item.enchantment) effects.push(`Gain ${item.shieldAmount} shield.`);
-        if (item.heal && !item.enchantment) effects.push(`Heal for ${item.healAmount}.`);
-        
-        // Add enchantment effects if present
-        if (item.enchantment && item.enchantmentEffects[item.enchantment]) {
-            const enchantEffects = item.enchantmentEffects[item.enchantment].effect;
-            
-            // Add base effects with enchantment modifications
-            if (item.damage || enchantEffects.damage) {
-                effects.push(`> Deal ${item.damage || 0} damage.`);
-            }
-            if (item.shield || enchantEffects.shield) {
-                effects.push(`> Gain ${item.shieldAmount || 0} shield.`);
-            }
-            if (item.heal || enchantEffects.heal) {
-                effects.push(`> Heal for ${item.healAmount || 0}.`);
-            }
-            
-            // Add additional enchantment effects
-            if (enchantEffects.slowTargets) {
-                effects.push(`> Slow ${enchantEffects.slowTargets} item(s) for ${enchantEffects.slowDuration} second(s).`);
-            }
-            if (enchantEffects.freezeTargets) {
-                effects.push(`> Freeze ${enchantEffects.freezeTargets} item(s) for ${enchantEffects.freezeDuration} second(s).`);
-            }
-            if (enchantEffects.hasteTargets) {
-                effects.push(`> Haste ${enchantEffects.hasteTargets} item(s) for ${enchantEffects.hasteDuration} second(s).`);
-            }
-            if (enchantEffects.poison) {
-                effects.push(`> Apply ${enchantEffects.poison} poison.`);
-            }
-            if (enchantEffects.burn) {
-                effects.push(`> Apply ${enchantEffects.burn} burn.`);
-            }
-            if (enchantEffects.multicast) {
-                effects.push(`> Trigger ${enchantEffects.multicast} additional time(s).`);
-            }
-            if (enchantEffects.critDamage) {
-                effects.push(`> Critical hits deal ${enchantEffects.critDamage}x damage.`);
-            }
-            if (enchantEffects.damageMultiplier) {
-                effects.push(`> Deal ${enchantEffects.damageMultiplier}x damage.`);
-            }
-        }
-        
-        return effects.join('\n');
+    // Remove any existing item name elements first
+    const existingName = itemElement.querySelector('.item-name');
+    if (existingName) {
+        existingName.remove();
     }
 
-    // Create the item name with tooltip
-    const itemName = document.createElement('div');
-    itemName.className = 'item-name';
-
+    // Add item name at the top
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'item-name';
     if (item.enchantment) {
-        const enchantSpan = document.createElement('span');
-        enchantSpan.className = 'enchantment-name';
-        enchantSpan.textContent = item.enchantmentEffects[item.enchantment].name;
-        
-        // Add tooltip
-        const tooltip = document.createElement('span');
-        tooltip.className = 'enchantment-tooltip';
-        tooltip.textContent = getItemEffects(item);
-        enchantSpan.appendChild(tooltip);
-        
-        // Add mouseover event to position tooltip
-        enchantSpan.addEventListener('mouseenter', (e) => {
-            const rect = enchantSpan.getBoundingClientRect();
-            tooltip.style.left = `${rect.left}px`;
-            tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`; // 5px gap
-            tooltip.style.visibility = 'visible';
-        });
-        
-        // Add mouseout event to hide tooltip
-        enchantSpan.addEventListener('mouseleave', () => {
-            tooltip.style.visibility = 'hidden';
-        });
-        
-        itemName.appendChild(enchantSpan);
-        itemName.appendChild(document.createTextNode(` ${item.name}`));
+        nameDiv.textContent = `${item.enchantmentEffects[item.enchantment].name} ${item.name}`;
     } else {
-        itemName.textContent = item.name;
+        nameDiv.textContent = item.name;
+    }
+    itemElement.appendChild(nameDiv);
+
+    // Add stats overlay
+    const statsDiv = document.createElement('div');
+    statsDiv.className = 'item-stats';
+    
+    const stats = [];
+    
+    // Base stats
+    if (item.damage) {
+        let damage = item.damage;
+        if (item.damageMultiplier) {
+            damage *= item.damageMultiplier;
+        }
+        stats.push(`<span class="stat-damage">Damage: ${damage}</span>`);
+    }
+    if (item.cooldown) {
+        stats.push(`Cooldown: ${item.cooldown}s`);
+    }
+    if (item.multicast && item.multicast > 1) {
+        stats.push(`Multicast: ${item.multicast}`);
+    }
+    if (item.crit) {
+        stats.push(`Crit Chance: ${item.crit * 100}%`);
+    }
+    if (item.critMultiplier) {
+        stats.push(`Triple Crit Damage`);
     }
 
-    content.appendChild(itemName);
-    content.appendChild(document.createElement('div')).className = 'item-type';
-    content.lastChild.textContent = item.type;
+    // Enchantment effects
+    if (item.shield) {
+        stats.push(`<span class="stat-shield">Shield: ${item.shieldAmount}</span>`);
+    }
+    if (item.heal) {
+        stats.push(`<span class="stat-heal">Heal: ${item.healAmount}</span>`);
+    }
+    if (item.poison) {
+        stats.push(`<span class="stat-effect">Poison: ${item.poison}</span>`);
+    }
+    if (item.burn) {
+        stats.push(`<span class="stat-effect">Burn: ${item.burn}</span>`);
+    }
+    if (item.slowTargets) {
+        stats.push(`<span class="stat-effect">Slow: ${item.slowTargets} target(s) for ${item.slowDuration}s</span>`);
+    }
+    if (item.freezeTargets) {
+        stats.push(`<span class="stat-effect">Freeze: ${item.freezeTargets} target(s) for ${item.freezeDuration}s</span>`);
+    }
+    if (item.hasteTargets) {
+        stats.push(`<span class="stat-effect">Haste: ${item.hasteTargets} target(s) for ${item.hasteDuration}s</span>`);
+    }
 
-    itemElement.appendChild(content);
+    statsDiv.innerHTML = stats.join('\n');
+    itemElement.appendChild(statsDiv);
     slot.appendChild(itemElement);
     
     // Mark occupied slots
@@ -317,7 +291,7 @@ export function renderSearchResults(items, onSelect) {
         const itemElement = document.createElement('div');
         itemElement.className = 'search-result-item';
         itemElement.innerHTML = `
-            <div class="item-name">${item.name}</div>
+            <div class="search-result-name">${item.name}</div>
             <div class="item-details">
                 ${item.type} | Tier: ${item.tier} | Size: ${item.size}
             </div>
@@ -326,20 +300,6 @@ export function renderSearchResults(items, onSelect) {
         itemElement.addEventListener('click', () => onSelect(item));
         resultsContainer.appendChild(itemElement);
     });
-}
-
-function removeEnchantment(item) {
-    if (!item.enchantment) return false;
-    
-    // Remove all enchantment effects
-    if (item.enchantmentEffects && item.enchantmentEffects[item.enchantment]) {
-        const effects = item.enchantmentEffects[item.enchantment].effect;
-        for (const key in effects) {
-            delete item[key];
-        }
-    }
-    delete item.enchantment;
-    return true;
 }
 
 export function findLeftmostEmptySlot(itemSize = 1) {

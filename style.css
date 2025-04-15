@@ -111,27 +111,28 @@ body {
 
 /* Item content overlay */
 .item-content {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-    padding: 16px 8px 8px;
-    color: white;
+    display: none;
 }
 
+/* Make item name more visible */
 .item-name {
-    font-size: 14px;
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
     font-weight: bold;
-    margin-bottom: 4px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    z-index: 2;
 }
 
-.item-type {
-    font-size: 12px;
-    opacity: 0.9;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-}
+/* Style for different stat types */
+.stat-damage { color: #ff4444; }
+.stat-shield { color: #44aaff; }
+.stat-heal { color: #44ff44; }
+.stat-effect { color: #ffaa44; }
 
 /* Board-specific colors */
 .monster-board .item {
@@ -298,16 +299,16 @@ body {
 
 /* Add enchantment border colors */
 .item.enchanted-heavy { border-color: #8B4513; }
-.item.enchanted-icy { border-color: #00BCD4; }
-.item.enchanted-turbo { border-color: #FFD700; }
-.item.enchanted-shielded { border-color: #2196F3; }
-.item.enchanted-restorative { border-color: #4CAF50; }
-.item.enchanted-toxic { border-color: #9C27B0; }
-.item.enchanted-fiery { border-color: #FF5722; }
-.item.enchanted-shiny { border-color: #E91E63; }
-.item.enchanted-deadly { border-color: #f44336; }
-.item.enchanted-radiant { border-color: #FFF176; }
-.item.enchanted-obsidian { border-color: #212121; }
+.item.enchanted-icy { border-color: #0080e9; }
+.item.enchanted-turbo { border-color: #00ffb3; }
+.item.enchanted-shielded { border-color: #f3de21; }
+.item.enchanted-restorative { border-color: #3fb643; }
+.item.enchanted-toxic { border-color: #25790c; }
+.item.enchanted-fiery { border-color: #ff9f22; }
+.item.enchanted-shiny { border-color: #ffc6d9; }
+.item.enchanted-deadly { border-color: #cc0e00; }
+.item.enchanted-radiant { border-color: #fa00fa; }
+.item.enchanted-obsidian { border-color: #330000; }
 
 /* Update enchantment dropdown styles */
 .enchantment-option.remove-enchant {
@@ -412,4 +413,17 @@ body {
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed #ddd;
+}
+
+.item-stats {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre-line;
 }

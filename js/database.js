@@ -4,59 +4,6 @@ const testDatabase = {
     items: [
         {
             ...baseItem,
-            name: "Wooden Sword",
-            type: "Weapon",
-            tier: "Bronze",
-            cost: 1,
-            cooldown: 2,
-            size: 1,
-            damage: 3
-        },
-        {
-            ...baseItem,
-            name: "Battle Axe",
-            type: "Weapon",
-            tier: "Silver",
-            cost: 3,
-            cooldown: 3,
-            size: 2,
-            damage: 7
-        },
-        {
-            ...baseItem,
-            name: "Dragon Lance",
-            type: "Weapon",
-            tier: "Gold",
-            cost: 5,
-            cooldown: 4,
-            size: 3,
-            damage: 12
-        },
-        {
-            ...baseItem,
-            name: "Health Potion",
-            type: "Consumable",
-            tier: "Bronze",
-            cost: 2,
-            cooldown: 3,
-            size: 1,
-            heal: true
-        },
-        {
-            ...baseItem,
-            name: "Frost Staff",
-            type: "Weapon",
-            tier: "Silver",
-            cost: 4,
-            cooldown: 3,
-            size: 2,
-            damage: 4,
-            freeze: true,
-            freezeDuration: 2,
-            freezeTargets: 1
-        },
-        {
-            ...baseItem,
             name: "Cove",
             type: "Aquatic",
             secondaryType: "Property",
@@ -82,6 +29,52 @@ const testDatabase = {
             size: 2,
             damage: 5,
             image: "./assets/images/Katana.webp",
+            enchantmentEffects: {
+                heavy: {
+                    name: "Heavy",
+                    effect: { slowTargets: 2, slowDuration: 1 }
+                },
+                icy: {
+                    name: "Icy",
+                    effect: { freezeTargets: 1, freezeDuration: 1, freezeSize: "medium" }
+                },
+                turbo: {
+                    name: "Turbo",
+                    effect: { hasteTargets: 2, hasteDuration: 1 }
+                },
+                shielded: {
+                    name: "Shielded",
+                    effect: { shield: true, shieldAmount: 5 }
+                },
+                restorative: {
+                    name: "Restorative",
+                    effect: { heal: true, healAmount: 5 }
+                },
+                toxic: {
+                    name: "Toxic",
+                    effect: { poisonPercent: 0.1 }
+                },
+                fiery: {
+                    name: "Fiery",
+                    effect: { burnPercent: 0.1 }
+                },
+                shiny: {
+                    name: "Shiny",
+                    effect: { multicast: 1 }
+                },
+                deadly: {
+                    name: "Deadly",
+                    effect: { crit: 0.5 }
+                },
+                radiant: {
+                    name: "Radiant",
+                    effect: { immuneToFreeze: true, immuneToSlow: true, immuneToDestroy: true }
+                },
+                obsidian: {
+                    name: "Obsidian",
+                    effect: { damageMultiplier: 2 }
+                }
+            }
         },
         {
             ...baseItem,
@@ -93,8 +86,55 @@ const testDatabase = {
             size: 2,
             damage: 10,
             multicast: 2,
-            critDamageMultiplier: 2,
+            baseMulticast: 2, // Add this line
+            critMultiplier: 3,
             image: "./assets/images/Cutlass.webp",
+            enchantmentEffects: {
+                shiny: {
+                    name: "Shiny",
+                    effect: { multicast: 1 }
+                },
+                heavy: {
+                    name: "Heavy",
+                    effect: { slowTargets: 2, slowDuration: 1 }
+                },
+                icy: {
+                    name: "Icy",
+                    effect: { freezeTargets: 1, freezeDuration: 1, freezeSize: "medium" }
+                },
+                turbo: {
+                    name: "Turbo",
+                    effect: { hasteTargets: 2, hasteDuration: 1 }
+                },
+                shielded: {
+                    name: "Shielded",
+                    effect: { shield: true, shieldAmount: 10 }
+                },
+                restorative: {
+                    name: "Restorative",
+                    effect: { heal: true, healAmount: 10 }
+                },
+                toxic: {
+                    name: "Toxic",
+                    effect: { poisonPercent: 0.1 }
+                },
+                fiery: {
+                    name: "Fiery",
+                    effect: { burnPercent: 0.1 }
+                },
+                deadly: {
+                    name: "Deadly",
+                    effect: { crit: 0.5 }
+                },
+                radiant: {
+                    name: "Radiant",
+                    effect: { immuneToFreeze: true, immuneToSlow: true, immuneToDestroy: true }
+                },
+                obsidian: {
+                    name: "Obsidian",
+                    effect: { damageMultiplier: 2 }
+                }
+            }
         },
         {
             ...baseItem,
@@ -132,11 +172,11 @@ const testDatabase = {
                 },
                 toxic: {
                     name: "Toxic",
-                    effect: { poison: 5 }
+                    effect: { poisonPercent: 0.1 }
                 },
                 fiery: {
                     name: "Fiery",
-                    effect: { burn: 5 }
+                    effect: { burnPercent: 0.1 }
                 },
                 shiny: {
                     name: "Shiny",

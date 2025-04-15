@@ -147,92 +147,48 @@ export class CombatSimulator {
         const sourceName = sourceState === this.playerState ? 'Player' : 'Monster';
         const targetName = targetState === this.playerState ? 'Player' : 'Monster';
         
-        // Check ammo
-        if (item.maxAmmo > 0) {
-            if (item.ammo <= 0) {
-                this.log(`${sourceName}'s ${item.name} is out of ammo!`, 'trigger');
-                return;
-            }
-            item.ammo--;
-            this.log(`${sourceName}'s ${item.name} uses 1 ammo (${item.ammo} remaining)`, 'trigger');
-        }
-
         this.log(`${sourceName}'s ${item.name} is triggering...`, 'trigger');
 
-        // Calculate damage with crit
-        let damage = this.calculateDamage(item, sourceState, targetState);
-        
-        // Apply Crusher Claw's shield bonus after it triggers
-        if (item.name === "Crusher Claw") {
-            this.applyShieldBonuses();
-        }
-        
-        // Apply shield first
-        if (targetState.shield > 0) {
-            if (damage <= targetState.shield) {
-                this.log(`${targetName}'s shield absorbs ${damage} damage`, 'shield');
-                targetState.shield -= damage;
-                damage = 0;
-            } else {
-                this.log(`${targetName}'s shield absorbs ${targetState.shield} damage`, 'shield');
-                damage -= targetState.shield;
-                targetState.shield = 0;
+        // Apply damage
+        if (item.damage) {
+            let damage = item.damage;
+            if (item.damageMultiplier) {
+                damage *= item.damageMultiplier;
             }
-        }
-
-        // Apply remaining damage to HP
-        if (damage > 0) {
             targetState.hp -= damage;
             this.log(`${targetName} takes ${damage} damage`, 'damage');
         }
 
-        // Apply shield if item provides it
-        if (item.shield) {
-            if (item.name === "Sea Shell") {
-                const aquaticItems = this.countAquaticItems(sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots);
-                const baseShield = item.shieldAmount * aquaticItems;
-                const bonusShield = item.bonusShield || 0;
-                const totalShield = baseShield + bonusShield;
-                sourceState.shield += totalShield;
-                this.log(`${sourceName} gains ${totalShield} shield (${baseShield} base + ${bonusShield} bonus)`, 'shield');
-            } else {
-                const totalShield = (item.shieldAmount || 0) + (item.bonusShield || 0);
-                sourceState.shield += totalShield;
-                this.log(`${sourceName} gains ${totalShield} shield`, 'shield');
-            }
+        // Apply shield
+        if (item.shield && item.shieldAmount) {
+            sourceState.shield += item.shieldAmount;
+            this.log(`${sourceName} gains ${item.shieldAmount} shield`, 'shield');
         }
 
         // Apply heal
-        if (item.heal) {
-            sourceState.hp += item.healAmount || 0;
+        if (item.heal && item.healAmount) {
+            sourceState.hp += item.healAmount;
             this.log(`${sourceName} heals for ${item.healAmount}`, 'heal');
         }
 
-        // Log state after effects
-        this.log(`${sourceName} - HP: ${sourceState.hp}, Shield: ${sourceState.shield}`, 'state');
-        this.log(`${targetName} - HP: ${targetState.hp}, Shield: ${targetState.shield}`, 'state');
+        // Apply poison
+        if (item.poison) {
+            targetState.poison += item.poison;
+            this.log(`${targetName} is poisoned for ${item.poison}`, 'poison');
+        }
 
-        // Apply status effects
-        if (item.poison) targetState.poison += item.poison;
-        if (item.burn) targetState.burn += item.burn;
-        if (item.freeze) this.applyFreeze(targetState, item);
-
-        // Handle enchantment effects
-        if (item.enchantment) {
-            // Handle status effects from enchantments
-            if (item.slowTargets && item.slowDuration) {
-                this.applySlow(targetState, item);
-            }
-            if (item.freezeTargets && item.freezeDuration) {
-                this.applyFreeze(targetState, item);
-            }
-            if (item.hasteTargets && item.hasteDuration) {
-                this.applyHaste(sourceState, item);
-            }
+        // Apply burn
+        if (item.burn) {
+            targetState.burn += item.burn;
+            this.log(`${targetName} is burned for ${item.burn}`, 'burn');
         }
 
         // Update next trigger time
         item.nextTrigger = this.time + item.cooldown;
+
+        // Log final states
+        this.log(`${sourceName} - HP: ${sourceState.hp}, Shield: ${sourceState.shield}`, 'state');
+        this.log(`${targetName} - HP: ${targetState.hp}, Shield: ${targetState.shield}`, 'state');
     }
 
     calculateDamage(item, sourceState, targetState) {
@@ -240,24 +196,30 @@ export class CombatSimulator {
 
         let damage = item.damage;
 
-        // Apply enchantment damage multiplier
+        // Apply enchantment damage multiplier first
         if (item.damageMultiplier) {
             damage *= item.damageMultiplier;
         }
 
-        // Special case for Crusher Claw
-        if (item.name === "Crusher Claw") {
-            damage = this.getHighestShieldValue(sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots);
-        }
-
         // Apply crit chance
         if (item.crit && Math.random() < item.crit) {
-            const critMultiplier = item.critDamage || 2;
-            damage *= critMultiplier;
-            this.log(`Critical hit! Damage multiplied by ${critMultiplier}x to ${damage}`, 'trigger');
+            // Normal items: damage * 2
+            // Cutlass: damage + (damage * 2)
+            const baseCritMultiplier = 2;
+            const critMultiplier = item.critMultiplier || baseCritMultiplier;
+            
+            if (item.critMultiplier) {
+                // For Cutlass: add base damage + (base damage * 2)
+                damage = damage + (damage * baseCritMultiplier);
+            } else {
+                // For normal items: just multiply by 2
+                damage *= baseCritMultiplier;
+            }
+            
+            this.log(`Critical hit! Damage calculated as ${damage}`, 'trigger');
         }
 
-        // Handle multicast
+        // Handle multicast last
         if (item.multicast && item.multicast > 1) {
             const hits = item.multicast;
             damage *= hits;
@@ -398,23 +360,112 @@ export function applyEnchantment(item, enchantmentName) {
         return false;
     }
 
+    // Remove the current enchantment if one exists
+    if (item.enchantment) {
+        removeEnchantment(item);
+    }
+
     const enchantment = item.enchantmentEffects[enchantmentName];
-    Object.assign(item, enchantment.effect);
+    const effect = { ...enchantment.effect }; // Create a copy to modify
+
+    // Handle percentage-based effects
+    if (effect.poisonPercent !== undefined) {
+        const poisonValue = item.damage * effect.poisonPercent;
+        effect.poison = poisonValue < 1 ? 0 : Math.round(poisonValue);
+        delete effect.poisonPercent;
+    }
+
+    if (effect.burnPercent !== undefined) {
+        const burnValue = item.damage * effect.burnPercent;
+        effect.burn = burnValue < 1 ? 0 : Math.round(burnValue);
+        delete effect.burnPercent;
+    }
+
+    // Handle shield and heal that scale with damage
+    if (effect.shield === true) {
+        effect.shield = true;
+        effect.shieldAmount = item.damage;
+    }
+
+    if (effect.heal === true) {
+        effect.heal = true;
+        effect.healAmount = item.damage;
+    }
+
+    // Handle multicast increment instead of replacement
+    if (effect.multicast !== undefined) {
+        item.multicast = (item.multicast || 0) + effect.multicast;
+        delete effect.multicast; // Prevent overwriting in the next step
+    }
+
+    // Apply all remaining effects to the item
+    for (const [key, value] of Object.entries(effect)) {
+        item[key] = value;
+    }
+
     item.enchantment = enchantmentName;
+
+    // Log the applied effects for debugging
+    console.log('Applied enchantment:', enchantmentName, 'to item:', item.name);
+    console.log('Final item state:', item);
+
     return true;
 }
 
 export function removeEnchantment(item) {
     if (!item.enchantment) return false;
     
+    // Store the original enchantment name for logging
+    const removedEnchantment = item.enchantment;
+    
     // Remove all enchantment effects
-    if (item.enchantmentEffects && item.enchantmentEffects[item.enchantment]) {
-        const effects = item.enchantmentEffects[item.enchantment].effect;
+    if (item.enchantmentEffects && item.enchantmentEffects[removedEnchantment]) {
+        const effects = item.enchantmentEffects[removedEnchantment].effect;
+        
+        // Remove original effect properties
         for (const key in effects) {
             delete item[key];
         }
+        
+        // Remove all possible derived properties
+        const derivedProperties = [
+            'poison',         // from poisonPercent
+            'burn',           // from burnPercent
+            'shieldAmount',   // from shield: true
+            'healAmount',     // from heal: true
+            'shield',         // from shield: true
+            'heal',           // from heal: true
+            'damageMultiplier',
+            'slowTargets',
+            'slowDuration',
+            'freezeTargets',
+            'freezeDuration',
+            'hasteTargets',
+            'hasteDuration',
+            'crit',
+            'critDamage',
+            'immuneToFreeze',
+            'immuneToSlow',
+            'immuneToDestroy'
+        ];
+        
+        derivedProperties.forEach(prop => {
+            delete item[prop];
+        });
+
+        // Handle multicast restoration
+        if (effects.multicast !== undefined) {
+            item.multicast = item.baseMulticast || 0; // Restore the original multicast value
+        }
     }
+    
+    // Remove the enchantment name last
     delete item.enchantment;
+    
+    // Log for debugging
+    console.log('Removed enchantment:', removedEnchantment, 'from item:', item.name);
+    console.log('Final item state:', item);
+    
     return true;
 }
 
