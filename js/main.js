@@ -165,5 +165,23 @@ function findLeftmostEmptySlot(itemSize = 1) {
     return -1; // No space found
 }
 
+function handleOrientationChange() {
+    const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+    const rotateMessage = document.querySelector('.rotate-message');
+    const container = document.querySelector('.container');
+
+    if (isLandscape) {
+        rotateMessage.style.display = 'none';
+        container.style.display = 'flex';
+    } else {
+        rotateMessage.style.display = 'flex';
+        container.style.display = 'none';
+    }
+}
+
+// Listen for orientation changes
+window.addEventListener('orientationchange', handleOrientationChange);
+window.addEventListener('load', handleOrientationChange);
+
 init();
 // Uncomment to test: addTestItem();

@@ -214,6 +214,19 @@ const coconutCrabBuild = {
     name: "Coconut Crab",
     health: 200,
     slots: [
+        null,
+        null,
+        null,
+        {
+            ...baseItem,
+            name: "Coconut",
+            type: "Food",
+            tier: "Bronze",
+            cost: 2,
+            cooldown: 0,  // Passive item
+            size: 1,
+            image: "./assets/images/Coconut.webp",
+        },
         {
             ...baseItem,
             name: "Crusher Claw",
@@ -239,33 +252,6 @@ const coconutCrabBuild = {
             shield: true,
             shieldAmount: 10,   // Base shield amount per aquatic item
             image: "./assets/images/SeaShell.webp",
-        },
-        {
-            ...baseItem,
-            name: "Coconut",
-            type: "Food",
-            tier: "Bronze",
-            cost: 2,
-            cooldown: 0,  // Passive item
-            size: 1,
-            image: "./assets/images/Coconut.webp",
-        },
-        {
-            ...baseItem,
-            name: "Cove",
-            type: "Aquatic",
-            secondaryType: "Property",
-            tier: "Bronze",
-            cost: 6,
-            cooldown: 4,
-            size: 3,
-            shield: true,
-            shieldAmount: 3,
-            value: 3,
-            image: "./assets/images/Cove.webp",
-            passive: "When you sell an item, this gains 1 value",
-            trigger: "Cooldown",
-            valueMultiplier: 1,
         },
         null,
         null,

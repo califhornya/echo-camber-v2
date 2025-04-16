@@ -225,8 +225,14 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
     if (item.crit) {
         stats.push(`Crit Chance: ${item.crit * 100}%`);
     }
-    if (item.critMultiplier) {
+    if (item.critMultiplier == 3) {
+        stats.push(`Double Crit Damage`);
+    }
+    if (item.critMultiplier == 4) {
         stats.push(`Triple Crit Damage`);
+    }
+    if (item.critMultiplier == 5) {
+        stats.push(`Quadruple Crit Damage`);
     }
 
     // Enchantment effects
