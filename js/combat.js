@@ -145,13 +145,18 @@ export class CombatSimulator {
     }
 
     initializeItems() {
-        // Set initial trigger times for all items based on their cooldown
         [...this.playerBoard, ...this.monsterBoard.slots]
             .filter(item => item)
             .forEach((item, index) => {
                 // Set first trigger time to the item's cooldown
                 item.nextTrigger = item.cooldown;
                 item.nextUnfreeze = null;
+
+                // Initialize ammo only if maxAmmo is greater than 0
+                if (item.maxAmmo > 0) {
+                    item.ammo = item.maxAmmo;
+                }
+
                 // Add a unique instance ID combining board position and timestamp
                 item.instanceId = `${item.name}_${index}_${Date.now()}`;
             });
@@ -203,8 +208,37 @@ export class CombatSimulator {
     triggerItem(item, sourceState, targetState) {
         const sourceName = sourceState === this.playerState ? 'Player' : 'Monster';
         const targetName = targetState === this.playerState ? 'Player' : 'Monster';
-        
+
+        // Skip non-combat items unless they have special cases like Crusher Claw
+        const hasCombatEffect = item.damage || item.shield || item.heal || item.poison || item.burn ||
+                                item.slowTargets || item.freezeTargets || item.hasteTargets || item.multicast ||
+                                (item.crit && item.crit > 0) || item.name === "Crusher Claw"; // Include special case for Crusher Claw
+        if (!hasCombatEffect) {
+            /* this.log(`${sourceName}'s ${item.name} does nothing in combat.`, 'state'); */
+            return;
+        }
+
+        // Check if the item has ammo and if it can trigger
+        if (item.maxAmmo > 0) { // Only check for ammo if maxAmmo is greater than 0
+            if (item.ammo <= 0) {
+                this.log(`${sourceName}'s ${item.name} cannot trigger (out of ammo).`, 'state');
+                return; // Skip triggering if out of ammo
+            }
+
+            // Consume 1 ammo
+            item.ammo--;
+            this.log(`${sourceName}'s ${item.name} consumes 1 ammo. Remaining ammo: ${item.ammo}`, 'state');
+        }
+
         this.log(`${sourceName}'s ${item.name} is triggering...`, 'trigger');
+
+        // Apply special logic for Crusher Claw
+        if (item.name === "Crusher Claw") {
+            const shieldBonus = this.getHighestShieldValue(sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots);
+            const damage = shieldBonus * (item.shieldBonus || 1);
+            targetState.hp -= damage;
+            this.log(`${targetName} takes ${damage} damage from ${item.name} (based on shield bonus).`, 'damage');
+        }
 
         // Apply damage
         if (item.damage) {
@@ -226,18 +260,6 @@ export class CombatSimulator {
         if (item.heal && item.healAmount) {
             sourceState.hp += item.healAmount;
             this.log(`${sourceName} heals for ${item.healAmount}`, 'heal');
-        }
-
-        // Apply poison
-        if (item.poison) {
-            targetState.poison += item.poison;
-            this.log(`${targetName} is poisoned for ${item.poison}`, 'poison');
-        }
-
-        // Apply burn
-        if (item.burn) {
-            targetState.burn += item.burn;
-            this.log(`${targetName} is burned for ${item.burn}`, 'burn');
         }
 
         // Update next trigger time
@@ -327,14 +349,13 @@ export class CombatSimulator {
     applyDotEffects() {}
     processSpecialEffects() {}
     resetState() {
-        // Reset combat state
         this.playerState = {
             hp: 250,
             shield: 0,
             poison: 0,
             burn: 0
         };
-        
+
         this.monsterState = {
             hp: this.monsterBoard.health || 200,
             shield: 0,
@@ -342,20 +363,14 @@ export class CombatSimulator {
             burn: 0
         };
 
-        // Reset all item states
         [...this.playerBoard, ...this.monsterBoard.slots]
             .filter(item => item)
             .forEach(item => {
                 item.nextTrigger = 0;
                 item.nextUnfreeze = null;
-                item.bonusShield = 0;  // Reset bonus shield
-            });
 
-        // Reset ammo for all items
-        [...this.playerBoard, ...this.monsterBoard.slots]
-            .filter(item => item)
-            .forEach(item => {
-                if (item.maxAmmo > 0) {
+                // Reset ammo for items with maxAmmo
+                if (item.maxAmmo !== undefined) {
                     item.ammo = item.maxAmmo;
                 }
             });
