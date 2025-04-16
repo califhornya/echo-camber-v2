@@ -192,7 +192,7 @@ export class CombatSimulator {
     processTriggers() {
         // Process player items
         this.playerBoard
-            .filter(item => item && !this.isItemFrozen(item))
+            .filter(item => item && !item.isNonCombat && !this.isItemFrozen(item)) // Skip non-combat items
             .forEach(item => {
                 if (this.time >= item.nextTrigger) {
                     this.triggerItem(item, this.playerState, this.monsterState);
@@ -201,7 +201,7 @@ export class CombatSimulator {
 
         // Process monster items
         this.monsterBoard.slots
-            .filter(item => item && !this.isItemFrozen(item))
+            .filter(item => item && !item.isNonCombat && !this.isItemFrozen(item)) // Skip non-combat items
             .forEach(item => {
                 if (this.time >= item.nextTrigger) {
                     this.triggerItem(item, this.monsterState, this.playerState);
@@ -210,6 +210,10 @@ export class CombatSimulator {
     }
 
     triggerItem(item, sourceState, targetState) {
+        if (item.isNonCombat) {
+            return; // Skip non-combat items
+        }
+
         const sourceName = sourceState === this.playerState ? 'Player' : 'Monster';
         const targetName = targetState === this.playerState ? 'Player' : 'Monster';
 
@@ -260,10 +264,60 @@ export class CombatSimulator {
                 this.log(`${targetName} is burned for ${totalBurn} damage over time.`, 'effect');
             }
 
-            // Apply shield (e.g., Sea Shell)
-            if (item.shield && item.shieldAmount) {
-                sourceState.shield += item.shieldAmount;
-                this.log(`${sourceName} gains ${item.shieldAmount} shield from ${item.name}.`, 'shield');
+            // Apply shield
+            if (item.shield) {
+                let shieldAmount = item.shieldAmount;
+
+                // Check if the item is enchanted
+                if (item.enchantment && item.scalingType && item.scaler) {
+                    // Dynamically calculate shield amount based on scaling logic
+                    if (item.scalingType === "percentage") {
+                        shieldAmount = Math.floor(item[item.scaler] * item.scalingValue);
+                    } else if (item.scalingType === "multiplier") {
+                        shieldAmount = item[item.scaler] * item.scalingValue;
+                    } else if (item.scalingType === "equal") {
+                        shieldAmount = item[item.scaler];
+                    }
+                }
+
+                sourceState.shield += shieldAmount;
+                this.log(`${sourceName} gains ${shieldAmount} shield from ${item.name}.`, 'shield');
+            }
+
+            // Apply poison
+            if (item.poison) {
+                let poisonAmount = item.poison;
+
+                // Check if the item is enchanted
+                if (item.enchantment && item.scalingType && item.scaler) {
+                    // Dynamically calculate poison amount based on scaling logic
+                    if (item.scalingType === "percentage") {
+                        poisonAmount = Math.floor(item[item.scaler] * item.scalingValue);
+                    } else if (item.scalingType === "equal") {
+poisonAmount = item[item.scaler];
+                    }
+                }
+
+                targetState.poison += poisonAmount;
+                this.log(`${targetName} is poisoned for ${poisonAmount} damage over time.`, 'effect');
+            }
+
+            // Apply heal
+            if (item.heal) {
+                let healAmount = item.healAmount;
+
+                // Check if the item is enchanted
+                if (item.enchantment && item.scalingType && item.scaler) {
+                    // Dynamically calculate heal amount based on scaling logic
+                    if (item.scalingType === "percentage") {
+                        healAmount = Math.floor(item[item.scaler] * item.scalingValue);
+                    } else if (item.scalingType === "multiplier") {
+                        healAmount = item[item.scaler] * item.scalingValue;
+                    }
+                }
+
+                sourceState.hp += healAmount;
+                this.log(`${sourceName} heals for ${healAmount} HP.`, 'heal');
             }
         }
 
@@ -472,11 +526,40 @@ export function applyEnchantment(item, enchantmentName) {
     const enchantment = item.enchantmentEffects[enchantmentName];
     const effect = { ...enchantment.effect }; // Create a copy to modify
 
-    // Handle percentage-based effects
-    if (effect.burnPercent !== undefined) {
-        const burnValue = Math.floor(item.damage * effect.burnPercent); // Correctly calculate burn value
-        effect.burn = burnValue; // Assign the calculated burn value
-        delete effect.burnPercent;
+    // Handle scaling logic
+    if (effect.scalingType && effect.scaler) {
+        const scalerValue = item[effect.scaler] || 0; // Get the value of the scaler property
+
+        switch (effect.scalingType) {
+            case "percentage":
+                Object.keys(effect).forEach(key => {
+                    if (key !== "scalingType" && key !== "scaler" && key !== "scalingValue") {
+                        effect[key] = Math.floor(scalerValue * (effect.scalingValue || 0));
+                    }
+                });
+                break;
+            case "equal":
+                Object.keys(effect).forEach(key => {
+                    if (key !== "scalingType" && key !== "scaler" && key !== "scalingValue") {
+                        effect[key] = scalerValue;
+                    }
+                });
+                break;
+            case "multiplier":
+                Object.keys(effect).forEach(key => {
+                    if (key !== "scalingType" && key !== "scaler" && key !== "scalingValue") {
+                        effect[key] = scalerValue * (effect.scalingValue || 1);
+                    }
+                });
+                break;
+            default:
+                console.warn(`Unknown scalingType: ${effect.scalingType}`);
+        }
+
+        // Remove scaling-related properties to avoid applying them directly
+        delete effect.scalingType;
+        delete effect.scaler;
+        delete effect.scalingValue;
     }
 
     // Apply all remaining effects to the item

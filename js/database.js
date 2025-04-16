@@ -303,6 +303,205 @@ const testDatabase = {
                     }
                 }
             }
+        },
+        {
+            ...baseItem,
+            name: "Trebuchet",
+            type: "Weapon",
+            tier: "Bronze",
+            cost: 6,
+            cooldown: 10,
+            size: 3,
+            damage: 100,
+            burn: 4, // Base burn value
+            maxAmmo: 1,
+            ammo: 1,
+            image: "./assets/images/Trebuchet.webp",
+            enchantmentEffects: {
+                heavy: {
+                    name: "Heavy",
+                    effect: {
+                        slowTargets: 1,
+                        slowDuration: 3
+                    }
+                },
+                icy: {
+                    name: "Icy",
+                    effect: {
+                        freezeTargets: 1,
+                        freezeDuration: 2
+                    }
+                },
+                turbo: {
+                    name: "Turbo",
+                    effect: {
+                        hasteTargets: 1,
+                        hasteDuration: 3
+                    }
+                },
+                shielded: {
+                    name: "Shielded",
+                    effect: {
+                        shield: true,
+                        shieldAmount: 0, // Dynamically calculated
+                        scalingType: "equal", // Shield equals damage
+                        scaler: "damage" // Use damage for scaling
+                    }
+                },
+                restorative: {
+                    name: "Restorative",
+                    effect: {
+                        heal: true,
+                        healAmount: 0, // Dynamically calculated
+                        scalingType: "equal", // Heal equals damage
+                        scaler: "damage" // Use damage for scaling
+                    }
+                },
+                toxic: {
+                    name: "Toxic",
+                    effect: {
+                        poison: 0, // Poison value will be dynamically calculated
+                        scalingType: "equal", // Poison equals burn
+                        scaler: "burn" // Use burn value for scaling
+                    }
+                },
+                fiery: {
+                    name: "Fiery",
+                    effect: {
+                        burn: 0, // Burn value will be dynamically calculated
+                        scalingType: "multiplier", // Burn is doubled
+                        scaler: "burn", // Use burn value for scaling
+                        scalingValue: 2 // Double the burn value
+                    }
+                },
+                shiny: {
+                    name: "Shiny",
+                    effect: {
+                        multicast: 1
+                    }
+                },
+                deadly: {
+                    name: "Deadly",
+                    effect: {
+                        crit: 0.5 // +50% Crit Chance
+                    }
+                },
+                radiant: {
+                    name: "Radiant",
+                    effect: {
+                        immuneToFreeze: true,
+                        immuneToSlow: true,
+                        immuneToDestroy: true
+                    }
+                },
+                obsidian: {
+                    name: "Obsidian",
+                    effect: {
+                        damageMultiplier: 2 // Double the damage
+                    }
+                }
+            }
+        },
+        {
+            ...baseItem,
+            name: "Lighter",
+            type: "Tool",
+            tier: "Bronze",
+            cost: 2,
+            cooldown: 3,
+            size: 1,
+            burn: 2, // Base burn value
+            image: "./assets/images/Lighter.webp",
+            enchantmentEffects: {
+                heavy: {
+                    name: "Heavy",
+                    effect: {
+                        slowTargets: 1,
+                        slowDuration: 1
+                    }
+                },
+                icy: {
+                    name: "Icy",
+                    effect: {
+                        freezeTargets: 1,
+                        freezeDuration: 1,
+                        freezeSize: "small"
+                    }
+                },
+                turbo: {
+                    name: "Turbo",
+                    effect: {
+                        hasteTargets: 1,
+                        hasteDuration: 1
+                    }
+                },
+                shielded: {
+                    name: "Shielded",
+                    effect: {
+                        shield: true,
+                        shieldAmount: 0, // Dynamically calculated
+                        scalingType: "multiplier", // Shield scales with burn
+                        scaler: "burn", // Use burn value for scaling
+                        scalingValue: 10 // 10x burn value
+                    }
+                },
+                restorative: {
+                    name: "Restorative",
+                    effect: {
+                        heal: true,
+                        healAmount: 0, // Dynamically calculated
+                        scalingType: "multiplier", // Heal scales with burn
+                        scaler: "burn", // Use burn value for scaling
+                        scalingValue: 10 // 10x burn value
+                    }
+                },
+                toxic: {
+                    name: "Toxic",
+                    effect: {
+                        poison: 0, // Poison value will be dynamically calculated
+                        scalingType: "equal", // Poison equals burn
+                        scaler: "burn" // Use burn value for scaling
+                    }
+                },
+                fiery: {
+                    name: "Fiery",
+                    effect: {
+                        burn: 0, // Burn value will be dynamically calculated
+                        scalingType: "multiplier", // Burn is doubled
+                        scaler: "burn", // Use burn value for scaling
+                        scalingValue: 2 // Double the burn value
+                    }
+                },
+                shiny: {
+                    name: "Shiny",
+                    effect: {
+                        multicast: 1
+                    }
+                },
+                deadly: {
+                    name: "Deadly",
+                    effect: {
+                        crit: 0.5 // +50% Crit Chance
+                    }
+                },
+                radiant: {
+                    name: "Radiant",
+                    effect: {
+                        immuneToFreeze: true,
+                        immuneToSlow: true,
+                        immuneToDestroy: true
+                    }
+                },
+                obsidian: {
+                    name: "Obsidian",
+                    effect: {
+                        damage: 0, // Dynamically calculated
+                        scalingType: "multiplier", // Damage scales with burn
+                        scaler: "burn", // Use burn value for scaling
+                        scalingValue: 10 // 10x burn value
+                    }
+                }
+            }
         }
     ],
 
@@ -333,6 +532,7 @@ const coconutCrabBuild = {
             cost: 2,
             cooldown: 0,  // Passive item
             size: 1,
+            isNonCombat: true, // Mark as non-combat
             image: "./assets/images/Coconut.webp",
         },
         {

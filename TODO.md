@@ -6,7 +6,9 @@
 
 
 ## 🛠️ Features to Implement
-- [ ] Implement Ammo logic
+- [x] Implement Ammo logic
+- [x] Implement Burn logic
+- [ ] Implement Toxic logic, same as burn but 1 time per t and doesn't decay
 - [ ] Implement Reload logic
 - [ ] Implement Freeze logic
 - [ ] Implement Haste logic

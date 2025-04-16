@@ -302,7 +302,7 @@ body {
 }
 
 /* Add enchantment border colors */
-.item.enchanted-heavy { border-color: #8B4513; }
+.item.enchanted-heavy { border-color: #803500; }
 .item.enchanted-icy { border-color: #0080e9; }
 .item.enchanted-turbo { border-color: #00ffb3; }
 .item.enchanted-shielded { border-color: #f3de21; }
