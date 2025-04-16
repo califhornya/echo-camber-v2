@@ -48,10 +48,11 @@ function placeItem(item, startSlot) {
 function handleSearch(e) {
     const query = e.target.value.trim();
     console.log('Search query:', query);
-    
-    const results = testDatabase.searchItems(query);
+
+    // Show all items if the query is empty
+    const results = query ? testDatabase.searchItems(query) : testDatabase.items;
     console.log('Search results:', results);
-    
+
     renderSearchResults(results, handleItemSelect);
 }
 
@@ -103,7 +104,10 @@ function setupEventListeners() {
     
     // Search events
     searchInput.addEventListener('input', handleSearch);
-    
+
+    // Trigger search when the search bar is focused
+    searchInput.addEventListener('focus', handleSearch);
+
     // Hide search results when clicking outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.search-section')) {

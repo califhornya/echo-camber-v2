@@ -4,7 +4,7 @@ export class CombatSimulator {
         this.monsterBoard = monsterBoard;
         this.time = 0;
         this.isRunning = false;
-        
+
         // Combat state
         this.playerState = {
             hp: 250,  // We can make this configurable later
@@ -12,7 +12,7 @@ export class CombatSimulator {
             poison: 0,
             burn: 0
         };
-        
+
         this.monsterState = {
             hp: monsterBoard.health || 200,
             shield: 0,
@@ -23,6 +23,10 @@ export class CombatSimulator {
         this.logs = [];
         this.currentTimeLogs = [];  // Buffer for current timestamp logs
         this.groupedLogs = [];      // Final grouped logs
+
+        // Sandstorm state
+        this.sandstormStarted = false;
+        this.sandstormDamage = 0; // Damage per tick
     }
 
     log(message, type = 'default') {
@@ -93,14 +97,51 @@ export class CombatSimulator {
         this.initializeItems();
 
         while (this.isRunning) {
-            this.processTurn();
-            
-            // Check win conditions
-            if (this.playerState.hp <= 0) return 'monster';
-            if (this.monsterState.hp <= 0) return 'player';
-            
+            this.processTurn(); // Process the turn directly
             this.time++;
+
+            // Final combat state check after each turn
+            if (this.playerState.hp <= 0 && this.monsterState.hp <= 0) {
+                this.log("Both players have been defeated!", "state");
+                console.log("Combat ended: Both players have 0 HP");
+                return 'draw'; // Declare a draw if both players are defeated
+            }
+            if (this.playerState.hp <= 0) {
+                this.log("Player has been defeated!", "state");
+                console.log("Combat ended: Player HP is 0");
+                return 'monster';
+            }
+            if (this.monsterState.hp <= 0) {
+                this.log("Monster has been defeated!", "state");
+                console.log("Combat ended: Monster HP is 0");
+                return 'player';
+            }
         }
+    }
+
+    processTurn() {
+        // Start Sandstorm if time >= 30 seconds
+        if (this.time >= 30 && !this.sandstormStarted) {
+            this.sandstormStarted = true;
+            this.sandstormDamage = 1;
+            this.log("The Sandstorm has started!", "state");
+        }
+
+        // Apply Sandstorm damage once per turn
+        if (this.sandstormStarted) {
+            this.applySandstormDamage();
+        }
+
+        // Process other turn-based mechanics
+        this.processTriggers();
+        this.applyDotEffects();
+        this.processSpecialEffects();
+
+        // Log final state after all effects
+        this.log(`End of turn: Player - HP: ${this.playerState.hp}, Shield: ${this.playerState.shield}`, "state");
+        this.log(`End of turn: Monster - HP: ${this.monsterState.hp}, Shield: ${this.monsterState.shield}`, "state");
+
+        this.flushTimeLogs();
     }
 
     initializeItems() {
@@ -116,11 +157,27 @@ export class CombatSimulator {
             });
     }
 
-    processTurn() {
-        this.processTriggers();
-        this.applyDotEffects();
-        this.processSpecialEffects();
-        this.flushTimeLogs();  // Flush logs after processing the turn
+    applySandstormDamage() {
+        // Calculate the total Sandstorm damage for the current second
+        const startDamage = this.sandstormDamage;
+        const endDamage = this.sandstormDamage + 4; // 5 triggers in 1 second
+        const totalDamage = (startDamage + endDamage) * 5 / 2; // Sum of arithmetic series
+
+        // Apply damage to the player
+        const playerShieldedDamage = Math.max(0, totalDamage - this.playerState.shield);
+        this.playerState.shield = Math.max(0, this.playerState.shield - totalDamage);
+        this.playerState.hp -= playerShieldedDamage;
+
+        // Apply damage to the monster
+        const monsterShieldedDamage = Math.max(0, totalDamage - this.monsterState.shield);
+        this.monsterState.shield = Math.max(0, this.monsterState.shield - totalDamage);
+        this.monsterState.hp -= monsterShieldedDamage;
+
+        // Log the Sandstorm damage
+        this.log(`Sandstorm deals ${startDamage}+${startDamage + 1}+${startDamage + 2}+${startDamage + 3}+${startDamage + 4} = ${totalDamage} damage to both players!`, "damage");
+
+        // Increment Sandstorm damage for the next second
+        this.sandstormDamage += 5;
     }
 
     processTriggers() {
@@ -185,10 +242,6 @@ export class CombatSimulator {
 
         // Update next trigger time
         item.nextTrigger = this.time + item.cooldown;
-
-        // Log final states
-        this.log(`${sourceName} - HP: ${sourceState.hp}, Shield: ${sourceState.shield}`, 'state');
-        this.log(`${targetName} - HP: ${targetState.hp}, Shield: ${targetState.shield}`, 'state');
     }
 
     calculateDamage(item, sourceState, targetState) {
