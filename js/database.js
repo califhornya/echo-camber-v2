@@ -32,47 +32,83 @@ const testDatabase = {
             enchantmentEffects: {
                 heavy: {
                     name: "Heavy",
-                    effect: { slowTargets: 2, slowDuration: 1 }
+                    effect: {
+                        slowTargets: 2,
+                        slowDuration: 1
+                    }
                 },
                 icy: {
                     name: "Icy",
-                    effect: { freezeTargets: 1, freezeDuration: 1, freezeSize: "medium" }
+                    effect: {
+                        freezeTargets: 1,
+                        freezeDuration: 1,
+                        freezeSize: "medium"
+                    }
                 },
                 turbo: {
                     name: "Turbo",
-                    effect: { hasteTargets: 2, hasteDuration: 1 }
+                    effect: {
+                        hasteTargets: 2,
+                        hasteDuration: 1
+                    }
                 },
                 shielded: {
                     name: "Shielded",
-                    effect: { shield: true, shieldAmount: 5 }
+                    effect: {
+                        shield: true,
+                        shieldAmount: 5
+                    }
                 },
                 restorative: {
                     name: "Restorative",
-                    effect: { heal: true, healAmount: 5 }
+                    effect: {
+                        heal: true,
+                        healAmount: 5
+                    }
                 },
                 toxic: {
                     name: "Toxic",
-                    effect: { poisonPercent: 0.1 }
+                    effect: {
+                        poison: 0, // Poison value will be dynamically calculated
+                        scalingType: "percentage", // Poison is a percentage of damage
+                        scaler: "damage", // Use the item's damage for scaling
+                        scalingValue: 0.1 // 10% of damage
+                    }
                 },
                 fiery: {
                     name: "Fiery",
-                    effect: { burnPercent: 0.1 }
+                    effect: {
+                        burn: 0, // Burn value will be dynamically calculated
+                        scalingType: "percentage", // Burn is a percentage of damage
+                        scaler: "damage", // Use the item's damage for scaling
+                        scalingValue: 0.1 // 10% of damage
+                    }
                 },
                 shiny: {
                     name: "Shiny",
-                    effect: { multicast: 1 }
+                    effect: {
+                        multicast: 1
+                    }
                 },
                 deadly: {
                     name: "Deadly",
-                    effect: { crit: 0.5 }
+                    effect: {
+                        crit: 0.5
+                    }
                 },
                 radiant: {
                     name: "Radiant",
-                    effect: { immuneToFreeze: true, immuneToSlow: true, immuneToDestroy: true }
+                    effect: {
+                        immuneToFreeze: true,
+                        immuneToSlow: true,
+                        immuneToDestroy: true
+                    }
                 },
                 obsidian: {
                     name: "Obsidian",
-                    effect: { damageMultiplier: 2 }
+                    effect: {
+                        damageMultiplier: 2
+                    }
                 }
             }
         },
@@ -86,53 +122,89 @@ const testDatabase = {
             size: 2,
             damage: 10,
             multicast: 2,
-            baseMulticast: 2, // Add this line
+            baseMulticast: 2,
             critMultiplier: 3,
             image: "./assets/images/Cutlass.webp",
             enchantmentEffects: {
-                shiny: {
-                    name: "Shiny",
-                    effect: { multicast: 1 }
-                },
-                heavy: {
-                    name: "Heavy",
-                    effect: { slowTargets: 2, slowDuration: 1 }
-                },
-                icy: {
-                    name: "Icy",
-                    effect: { freezeTargets: 1, freezeDuration: 1, freezeSize: "medium" }
-                },
-                turbo: {
-                    name: "Turbo",
-                    effect: { hasteTargets: 2, hasteDuration: 1 }
-                },
-                shielded: {
-                    name: "Shielded",
-                    effect: { shield: true, shieldAmount: 10 }
-                },
-                restorative: {
-                    name: "Restorative",
-                    effect: { heal: true, healAmount: 10 }
-                },
                 toxic: {
                     name: "Toxic",
-                    effect: { poisonPercent: 0.1 }
+                    effect: {
+                        poison: 0, // Poison value will be dynamically calculated
+                        scalingType: "percentage", // Poison is a percentage of damage
+                        scaler: "damage", // Use the item's damage for scaling
+                        scalingValue: 0.1 // 10% of damage
+                    }
                 },
                 fiery: {
                     name: "Fiery",
-                    effect: { burnPercent: 0.1 }
+                    effect: {
+                        burn: 0, // Burn value will be dynamically calculated
+                        scalingType: "percentage", // Burn is a percentage of damage
+                        scaler: "damage", // Use the item's damage for scaling
+                        scalingValue: 0.1 // 10% of damage
+                    }
+                },
+                shiny: {
+                    name: "Shiny",
+                    effect: {
+                        multicast: 1
+                    }
+                },
+                heavy: {
+                    name: "Heavy",
+                    effect: {
+                        slowTargets: 2,
+                        slowDuration: 1
+                    }
+                },
+                icy: {
+                    name: "Icy",
+                    effect: {
+                        freezeTargets: 1,
+                        freezeDuration: 1,
+                        freezeSize: "medium"
+                    }
+                },
+                turbo: {
+                    name: "Turbo",
+                    effect: {
+                        hasteTargets: 2,
+                        hasteDuration: 1
+                    }
+                },
+                shielded: {
+                    name: "Shielded",
+                    effect: {
+                        shield: true,
+                        shieldAmount: 10
+                    }
+                },
+                restorative: {
+                    name: "Restorative",
+                    effect: {
+                        heal: true,
+                        healAmount: 10
+                    }
                 },
                 deadly: {
                     name: "Deadly",
-                    effect: { crit: 0.5 }
+                    effect: {
+                        crit: 0.5
+                    }
                 },
                 radiant: {
                     name: "Radiant",
-                    effect: { immuneToFreeze: true, immuneToSlow: true, immuneToDestroy: true }
+                    effect: {
+                        immuneToFreeze: true,
+                        immuneToSlow: true,
+                        immuneToDestroy: true
+                    }
                 },
                 obsidian: {
                     name: "Obsidian",
-                    effect: { damageMultiplier: 2 }
+                    effect: {
+                        damageMultiplier: 2
+                    }
                 }
             }
         },
@@ -152,47 +224,83 @@ const testDatabase = {
             enchantmentEffects: {
                 heavy: {
                     name: "Heavy",
-                    effect: { slowTargets: 1, slowDuration: 6 }
+                    effect: {
+                        slowTargets: 1,
+                        slowDuration: 6
+                    }
                 },
                 icy: {
                     name: "Icy",
-                    effect: { freezeTargets: 1, freezeDuration: 3, freezeSize: "small" }
+                    effect: {
+                        freezeTargets: 1,
+                        freezeDuration: 3,
+                        freezeSize: "small"
+                    }
                 },
                 turbo: {
                     name: "Turbo",
-                    effect: { hasteTargets: 1, hasteDuration: 6 }
+                    effect: {
+                        hasteTargets: 1,
+                        hasteDuration: 6
+                    }
                 },
                 shielded: {
                     name: "Shielded",
-                    effect: { shield: true, shieldAmount: 50 }
+                    effect: {
+                        shield: true,
+                        shieldAmount: 50
+                    }
                 },
                 restorative: {
                     name: "Restorative",
-                    effect: { heal: true, healAmount: 50 }
+                    effect: {
+                        heal: true,
+                        healAmount: 50
+                    }
                 },
                 toxic: {
                     name: "Toxic",
-                    effect: { poisonPercent: 0.1 }
+                    effect: {
+                        poison: 0, // Poison value will be dynamically calculated
+                        scalingType: "percentage", // Poison is a percentage of damage
+                        scaler: "damage", // Use the item's damage for scaling
+                        scalingValue: 0.1 // 10% of damage
+                    }
                 },
                 fiery: {
                     name: "Fiery",
-                    effect: { burnPercent: 0.1 }
+                    effect: {
+                        burn: 0, // Burn value will be dynamically calculated
+                        scalingType: "percentage", // Burn is a percentage of damage
+                        scaler: "damage", // Use the item's damage for scaling
+                        scalingValue: 0.1 // 10% of damage
+                    }
                 },
                 shiny: {
                     name: "Shiny",
-                    effect: { multicast: 1 }
+                    effect: {
+                        multicast: 1
+                    }
                 },
                 deadly: {
                     name: "Deadly",
-                    effect: { critDamage: 4 }
+                    effect: {
+                        critDamage: 4
+                    }
                 },
                 radiant: {
                     name: "Radiant",
-                    effect: { immuneToFreeze: true, immuneToSlow: true, immuneToDestroy: true }
+                    effect: {
+                        immuneToFreeze: true,
+                        immuneToSlow: true,
+                        immuneToDestroy: true
+                    }
                 },
                 obsidian: {
                     name: "Obsidian",
-                    effect: { damageMultiplier: 2 }
+                    effect: {
+                        damageMultiplier: 2
+                    }
                 }
             }
         }

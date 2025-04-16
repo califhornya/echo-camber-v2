@@ -7,26 +7,22 @@ export class CombatSimulator {
 
         // Combat state
         this.playerState = {
-            hp: 250,  // We can make this configurable later
+            hp: 250,
             shield: 0,
             poison: 0,
-            burn: 0
+            burn: { value: 0 } // Burn state
         };
 
         this.monsterState = {
             hp: monsterBoard.health || 200,
             shield: 0,
             poison: 0,
-            burn: 0
+            burn: { value: 0 } // Burn state
         };
 
         this.logs = [];
-        this.currentTimeLogs = [];  // Buffer for current timestamp logs
-        this.groupedLogs = [];      // Final grouped logs
-
-        // Sandstorm state
-        this.sandstormStarted = false;
-        this.sandstormDamage = 0; // Damage per tick
+        this.currentTimeLogs = [];
+        this.groupedLogs = [];
     }
 
     log(message, type = 'default') {
@@ -132,6 +128,14 @@ export class CombatSimulator {
             this.applySandstormDamage();
         }
 
+        // Apply burn damage
+        this.applyBurnDamage(this.playerState, 'Player');
+        this.applyBurnDamage(this.monsterState, 'Monster');
+
+        // Debugging: Log burn state
+        this.log(`Player Burn State: ${JSON.stringify(this.playerState.burn)}`, 'state');
+        this.log(`Monster Burn State: ${JSON.stringify(this.monsterState.burn)}`, 'state');
+
         // Process other turn-based mechanics
         this.processTriggers();
         this.applyDotEffects();
@@ -209,17 +213,8 @@ export class CombatSimulator {
         const sourceName = sourceState === this.playerState ? 'Player' : 'Monster';
         const targetName = targetState === this.playerState ? 'Player' : 'Monster';
 
-        // Skip non-combat items unless they have special cases like Crusher Claw
-        const hasCombatEffect = item.damage || item.shield || item.heal || item.poison || item.burn ||
-                                item.slowTargets || item.freezeTargets || item.hasteTargets || item.multicast ||
-                                (item.crit && item.crit > 0) || item.name === "Crusher Claw"; // Include special case for Crusher Claw
-        if (!hasCombatEffect) {
-            /* this.log(`${sourceName}'s ${item.name} does nothing in combat.`, 'state'); */
-            return;
-        }
-
         // Check if the item has ammo and if it can trigger
-        if (item.maxAmmo > 0) { // Only check for ammo if maxAmmo is greater than 0
+        if (item.maxAmmo > 0) {
             if (item.ammo <= 0) {
                 this.log(`${sourceName}'s ${item.name} cannot trigger (out of ammo).`, 'state');
                 return; // Skip triggering if out of ammo
@@ -232,34 +227,44 @@ export class CombatSimulator {
 
         this.log(`${sourceName}'s ${item.name} is triggering...`, 'trigger');
 
-        // Apply special logic for Crusher Claw
+        // Special case: Crusher Claw
         if (item.name === "Crusher Claw") {
             const shieldBonus = this.getHighestShieldValue(sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots);
             const damage = shieldBonus * (item.shieldBonus || 1);
             targetState.hp -= damage;
             this.log(`${targetName} takes ${damage} damage from ${item.name} (based on shield bonus).`, 'damage');
+            return; // Exit after handling special case
         }
 
-        // Apply damage
-        if (item.damage) {
-            let damage = item.damage;
-            if (item.damageMultiplier) {
-                damage *= item.damageMultiplier;
+        // Handle multicast
+        const multicastCount = item.multicast || 1;
+        for (let i = 0; i < multicastCount; i++) {
+            // Apply damage
+            if (item.damage) {
+                let damage = item.damage;
+                if (item.damageMultiplier) {
+                    damage *= item.damageMultiplier;
+                }
+                targetState.hp -= damage;
+                this.log(`${targetName} takes ${damage} damage`, 'damage');
             }
-            targetState.hp -= damage;
-            this.log(`${targetName} takes ${damage} damage`, 'damage');
-        }
 
-        // Apply shield
-        if (item.shield && item.shieldAmount) {
-            sourceState.shield += item.shieldAmount;
-            this.log(`${sourceName} gains ${item.shieldAmount} shield`, 'shield');
-        }
+            // Apply burn
+            if (item.burn) {
+                const burnValue = item.burn;
+                const critMultiplier = item.crit && Math.random() < item.crit ? item.critMultiplier || 2 : 1;
+                const totalBurn = burnValue * critMultiplier;
 
-        // Apply heal
-        if (item.heal && item.healAmount) {
-            sourceState.hp += item.healAmount;
-            this.log(`${sourceName} heals for ${item.healAmount}`, 'heal');
+                targetState.burn.value += totalBurn; // Stack burn values
+
+                this.log(`${targetName} is burned for ${totalBurn} damage over time.`, 'effect');
+            }
+
+            // Apply shield (e.g., Sea Shell)
+            if (item.shield && item.shieldAmount) {
+                sourceState.shield += item.shieldAmount;
+                this.log(`${sourceName} gains ${item.shieldAmount} shield from ${item.name}.`, 'shield');
+            }
         }
 
         // Update next trigger time
@@ -346,6 +351,37 @@ export class CombatSimulator {
         }
     }
 
+    applyBurnDamage(state, stateName) {
+        if (state.burn.value > 0) {
+            for (let i = 0; i < 2; i++) { // Burn triggers twice per t
+                // Burn damage is equal to the current burn count
+                const burnDamage = state.burn.value;
+
+                // Reduce shield by burn damage
+                const shieldAbsorbed = Math.min(burnDamage, state.shield);
+                state.shield -= shieldAbsorbed;
+
+                // Apply remaining burn damage to HP
+                const remainingBurnDamage = burnDamage - shieldAbsorbed;
+                state.hp -= remainingBurnDamage;
+
+                // Log burn damage (include shield-absorbed damage)
+                const totalDamage = shieldAbsorbed + remainingBurnDamage;
+                this.log(`${stateName} takes ${totalDamage} burn damage.`, 'damage');
+
+                // Decay burn count
+                state.burn.value = Math.max(0, state.burn.value - 1);
+
+                // Check if burn has expired
+                if (state.burn.value === 0) {
+                    this.log(`Burn on ${stateName} has ended.`, 'effect');
+                    state.burn = { value: 0 }; // Reset burn state
+                    break; // Exit early if burn has expired
+                }
+            }
+        }
+    }
+
     applyDotEffects() {}
     processSpecialEffects() {}
     resetState() {
@@ -353,14 +389,14 @@ export class CombatSimulator {
             hp: 250,
             shield: 0,
             poison: 0,
-            burn: 0
+            burn: { value: 0 } // Burn state
         };
 
         this.monsterState = {
             hp: this.monsterBoard.health || 200,
             shield: 0,
             poison: 0,
-            burn: 0
+            burn: { value: 0 } // Burn state
         };
 
         [...this.playerBoard, ...this.monsterBoard.slots]
@@ -437,33 +473,10 @@ export function applyEnchantment(item, enchantmentName) {
     const effect = { ...enchantment.effect }; // Create a copy to modify
 
     // Handle percentage-based effects
-    if (effect.poisonPercent !== undefined) {
-        const poisonValue = item.damage * effect.poisonPercent;
-        effect.poison = poisonValue < 1 ? 0 : Math.round(poisonValue);
-        delete effect.poisonPercent;
-    }
-
     if (effect.burnPercent !== undefined) {
-        const burnValue = item.damage * effect.burnPercent;
-        effect.burn = burnValue < 1 ? 0 : Math.round(burnValue);
+        const burnValue = Math.floor(item.damage * effect.burnPercent); // Correctly calculate burn value
+        effect.burn = burnValue; // Assign the calculated burn value
         delete effect.burnPercent;
-    }
-
-    // Handle shield and heal that scale with damage
-    if (effect.shield === true) {
-        effect.shield = true;
-        effect.shieldAmount = item.damage;
-    }
-
-    if (effect.heal === true) {
-        effect.heal = true;
-        effect.healAmount = item.damage;
-    }
-
-    // Handle multicast increment instead of replacement
-    if (effect.multicast !== undefined) {
-        item.multicast = (item.multicast || 0) + effect.multicast;
-        delete effect.multicast; // Prevent overwriting in the next step
     }
 
     // Apply all remaining effects to the item
