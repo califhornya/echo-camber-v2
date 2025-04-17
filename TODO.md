@@ -1,6 +1,6 @@
 
 
-next commit: roguescrapper + monster selector + board rendering bugfix + boarrior"
+next commit:
 
 
 
@@ -8,15 +8,17 @@ next commit: roguescrapper + monster selector + board rendering bugfix + boarrio
 ## 🛠️ Features to Implement
 - [x] Implement Ammo logic
 - [x] Implement Burn logic
-- [ ] Implement Toxic logic, same as burn but 1 time per t and doesn't decay
+- [x] Implement Toxic logic, same as burn but 1 time per t and doesn't decay
+- [ ] Implement Days and tier values for monsters
+- [ ] Implement boardcap for player based on monster Day
 - [ ] Implement Reload logic
 - [ ] Implement Freeze logic
 - [ ] Implement Haste logic
 - [ ] Implement Slow logic
 - [ ] Implement Regeneration logic
-- [ ] Implement Heal logic
-- [ ] Implement Multicast logic
-- [ ] Add 2 more monsters
+- [x] Implement Heal logic
+- [x] Implement Multicast logic
+- [x] Add 2 more monsters
 - [ ] Add 10 more Vanessa items
 - [ ] Add drag-and-drop functionality for item placement
 - [ ] Create a "Reset Board" button to clear all items from the board
@@ -26,7 +28,7 @@ next commit: roguescrapper + monster selector + board rendering bugfix + boarrio
 
 ## 🐛 Bug Fixes
 - [ ] Fix mobile device
-- [ ] Selecting enchantment when another one is applied ahh bug
+- [x] Selecting enchantment when another one is applied ahh bug
 
 
 
