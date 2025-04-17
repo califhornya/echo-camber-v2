@@ -231,6 +231,8 @@ body {
 .log-freeze { color: #00bcd4; }
 .log-trigger { color: #ffbcf9; }
 .log-state { color: #e0e0e0; }
+.log-poison { color: #00ff00; }
+.log-burn { color: #ffa500; }
 
 .enchantment-section {
     display: none;

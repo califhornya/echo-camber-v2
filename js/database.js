@@ -1,5 +1,6 @@
 import { baseItem } from './baseItem.js';
 
+// Database of all available items and their properties
 const testDatabase = {
     items: [
         {
@@ -517,6 +518,7 @@ const testDatabase = {
     }
 };
 
+// Default monster build for testing
 const coconutCrabBuild = {
     name: "Coconut Crab",
     health: 200,

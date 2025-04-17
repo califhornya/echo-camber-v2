@@ -12,16 +12,12 @@ export function renderBoard(boardClass, isMonster = false) {
         const slot = document.createElement('div');
         slot.className = 'slot';
         slot.dataset.index = i;
-        
         board.appendChild(slot);
     }
 
-    // If it's monster board, populate it with predefined items
     if (isMonster && monsterBuild) {
         monsterBuild.slots.forEach((item, index) => {
-            if (item) {
-                renderItem(item, index, boardClass);
-            }
+            if (item) renderItem(item, index, boardClass);
         });
     }
 }
@@ -30,169 +26,160 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
     const slot = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex}"]`);
     if (!slot) return;
     
-    // Clear the slot first
     slot.innerHTML = '';
-    
     const itemElement = document.createElement('div');
     itemElement.className = `item size-${item.size}`;
+    
     if (item.enchantment) {
         itemElement.classList.add('enchanted');
         itemElement.classList.add(`enchanted-${item.enchantment}`);
     }
     
-    // Create image container
     if (item.image) {
         const imageContainer = document.createElement('div');
         imageContainer.className = 'item-image-container';
-        
         const image = document.createElement('img');
         image.src = item.image;
         image.alt = item.name;
         image.className = 'item-image';
-        
         imageContainer.appendChild(image);
         itemElement.appendChild(imageContainer);
     }
     
-    // Add remove item button (only for player board)
     if (boardClass === 'player-board') {
-        const removeButton = document.createElement('button');
-        removeButton.className = 'item-remove-button';
-        removeButton.textContent = '×';
-        removeButton.title = 'Remove item';
-        
-        removeButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const slotIndex = parseInt(slot.dataset.index);
-            
-            // Clear only this item's slots in the player board
-            for (let j = 0; j < item.size; j++) {
-                window.playerBoard[slotIndex + j] = null;
-            }
-            
-            // Remove only this item's element
-            itemElement.remove();
-            
-            // Remove 'occupied' class from the cleared slots
-            for (let j = 0; j < item.size; j++) {
-                const occupiedSlot = document.querySelector(`.player-board .slot[data-index="${slotIndex + j}"]`);
-                if (occupiedSlot) {
-                    occupiedSlot.classList.remove('occupied');
-                }
-            }
-        });
-        
-        itemElement.appendChild(removeButton);
+        addRemoveButton(itemElement, slot, item);
     }
     
-    // Add enchantment button and dropdown if item has enchantment effects
     if (item.enchantmentEffects) {
-        const enchantButton = document.createElement('button');
-        enchantButton.className = 'item-enchant-button';
-        enchantButton.textContent = '✨';
-        enchantButton.title = 'Enchant item';
-        
-        const dropdown = document.createElement('div');
-        dropdown.className = 'enchantment-dropdown';
-        
-        // Add enchantment options
-        Object.entries(item.enchantmentEffects).forEach(([key, enchant]) => {
-            const option = document.createElement('div');
-            option.className = 'enchantment-option';
-            
-            // Create the content with remove button for selected enchantment
-            if (item.enchantment === key) {
-                option.classList.add('selected');
-                
-                // Create a container for the name and remove button
-                const container = document.createElement('div');
-                container.style.display = 'flex';
-                container.style.justifyContent = 'space-between';
-                container.style.alignItems = 'center';
-                
-                // Add enchantment name
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = enchant.name;
-                container.appendChild(nameSpan);
-                
-                // Add remove button
-                const removeButton = document.createElement('span');
-                removeButton.textContent = '×';
-                removeButton.className = 'enchantment-remove';
-                removeButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    removeEnchantment(item);
-                    renderItem(item, parseInt(slot.dataset.index), boardClass);
-                    dropdown.classList.remove('active');
-                });
-                container.appendChild(removeButton);
-                
-                option.appendChild(container);
-            } else {
-                option.textContent = enchant.name;
-            }
-            
-            option.addEventListener('click', (e) => {
-                e.stopPropagation();
-                applyEnchantment(item, key);
-                document.querySelectorAll('.enchantment-dropdown').forEach(d => {
-                    d.classList.remove('active');
-                });
-                renderItem(item, parseInt(slot.dataset.index), boardClass);
-            });
-            
-            dropdown.appendChild(option);
-        });
-        
-        // Toggle dropdown on button click
-        enchantButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // Close all other dropdowns first
-            document.querySelectorAll('.enchantment-dropdown.active').forEach(d => {
-                if (d !== dropdown) d.classList.remove('active');
-            });
-            
-            // Position the dropdown above the button
-            const buttonRect = enchantButton.getBoundingClientRect();
-            dropdown.style.left = `${buttonRect.left}px`;
-            dropdown.style.top = `${buttonRect.top - dropdown.offsetHeight - 5}px`; // 5px gap
-            
-            dropdown.classList.toggle('active');
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            const clickX = e.clientX;
-            const clickY = e.clientY;
-            const dropdownRect = dropdown.getBoundingClientRect();
-            const buttonRect = enchantButton.getBoundingClientRect();
-            
-            // Check if click is outside both dropdown and button
-            const outsideDropdown = clickX < dropdownRect.left || 
-                                   clickX > dropdownRect.right || 
-                                   clickY < dropdownRect.top || 
-                                   clickY > dropdownRect.bottom;
-            const outsideButton = clickX < buttonRect.left || 
-                                 clickX > buttonRect.right || 
-                                 clickY < buttonRect.top || 
-                                 clickY > buttonRect.bottom;
-                                 
-            if (outsideDropdown && outsideButton) {
-                dropdown.classList.remove('active');
-            }
-        });
-        
-        itemElement.appendChild(enchantButton);
-        itemElement.appendChild(dropdown);
+        addEnchantmentButton(itemElement, item, slot, boardClass);
     }
     
-    // Remove any existing item name elements first
-    const existingName = itemElement.querySelector('.item-name');
-    if (existingName) {
-        existingName.remove();
-    }
+    addItemName(itemElement, item);
+    addItemStats(itemElement, item);
+    
+    slot.appendChild(itemElement);
+    markOccupiedSlots(boardClass, slotIndex, item.size);
+}
 
-    // Add item name at the top
+function addRemoveButton(itemElement, slot, item) {
+    const removeButton = document.createElement('button');
+    removeButton.className = 'item-remove-button';
+    removeButton.textContent = '×';
+    removeButton.title = 'Remove item';
+    
+    removeButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const slotIndex = parseInt(slot.dataset.index);
+        
+        for (let j = 0; j < item.size; j++) {
+            window.playerBoard[slotIndex + j] = null;
+        }
+        
+        itemElement.remove();
+        
+        for (let j = 0; j < item.size; j++) {
+            const occupiedSlot = document.querySelector(`.player-board .slot[data-index="${slotIndex + j}"]`);
+            if (occupiedSlot) occupiedSlot.classList.remove('occupied');
+        }
+    });
+    
+    itemElement.appendChild(removeButton);
+}
+
+function addEnchantmentButton(itemElement, item, slot, boardClass) {
+    const enchantButton = document.createElement('button');
+    enchantButton.className = 'item-enchant-button';
+    enchantButton.textContent = '✨';
+    enchantButton.title = 'Enchant item';
+    
+    const dropdown = document.createElement('div');
+    dropdown.className = 'enchantment-dropdown';
+    
+    Object.entries(item.enchantmentEffects).forEach(([key, enchant]) => {
+        const option = document.createElement('div');
+        option.className = 'enchantment-option';
+        
+        if (item.enchantment === key) {
+            option.classList.add('selected');
+            
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.justifyContent = 'space-between';
+            container.style.alignItems = 'center';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = enchant.name;
+            container.appendChild(nameSpan);
+            
+            const removeButton = document.createElement('span');
+            removeButton.textContent = '×';
+            removeButton.className = 'enchantment-remove';
+            removeButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeEnchantment(item);
+                renderItem(item, parseInt(slot.dataset.index), boardClass);
+                dropdown.classList.remove('active');
+            });
+            container.appendChild(removeButton);
+            
+            option.appendChild(container);
+        } else {
+            option.textContent = enchant.name;
+        }
+        
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            applyEnchantment(item, key);
+            document.querySelectorAll('.enchantment-dropdown').forEach(d => {
+                d.classList.remove('active');
+            });
+            renderItem(item, parseInt(slot.dataset.index), boardClass);
+        });
+        
+        dropdown.appendChild(option);
+    });
+    
+    enchantButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.enchantment-dropdown.active').forEach(d => {
+            if (d !== dropdown) d.classList.remove('active');
+        });
+        
+        const buttonRect = enchantButton.getBoundingClientRect();
+        dropdown.style.left = `${buttonRect.left}px`;
+        dropdown.style.top = `${buttonRect.top - dropdown.offsetHeight - 5}px`;
+        
+        dropdown.classList.toggle('active');
+    });
+    
+    document.addEventListener('click', (e) => {
+        const clickX = e.clientX;
+        const clickY = e.clientY;
+        const dropdownRect = dropdown.getBoundingClientRect();
+        const buttonRect = enchantButton.getBoundingClientRect();
+        
+        const outsideDropdown = clickX < dropdownRect.left || 
+                               clickX > dropdownRect.right || 
+                               clickY < dropdownRect.top || 
+                               clickY > dropdownRect.bottom;
+        const outsideButton = clickX < buttonRect.left || 
+                             clickX > buttonRect.right || 
+                             clickY < buttonRect.top || 
+                             clickY > buttonRect.bottom;
+                             
+        if (outsideDropdown && outsideButton) {
+            dropdown.classList.remove('active');
+        }
+    });
+    
+    itemElement.appendChild(enchantButton);
+    itemElement.appendChild(dropdown);
+}
+
+function addItemName(itemElement, item) {
+    const existingName = itemElement.querySelector('.item-name');
+    if (existingName) existingName.remove();
+
     const nameDiv = document.createElement('div');
     nameDiv.className = 'item-name';
     if (item.enchantment) {
@@ -201,14 +188,14 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
         nameDiv.textContent = item.name;
     }
     itemElement.appendChild(nameDiv);
+}
 
-    // Add stats overlay
+function addItemStats(itemElement, item) {
     const statsDiv = document.createElement('div');
     statsDiv.className = 'item-stats';
     
     const stats = [];
     
-    // Base stats
     if (item.damage) {
         let damage = item.damage;
         if (item.damageMultiplier) {
@@ -235,7 +222,6 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
         stats.push(`Quadruple Crit Damage`);
     }
 
-    // Enchantment effects
     if (item.shield) {
         stats.push(`<span class="stat-shield">Shield: ${item.shieldAmount}</span>`);
     }
@@ -260,21 +246,19 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
 
     statsDiv.innerHTML = stats.join('\n');
     itemElement.appendChild(statsDiv);
-    slot.appendChild(itemElement);
-    
-    // Mark occupied slots
-    for (let i = 0; i < item.size; i++) {
+}
+
+function markOccupiedSlots(boardClass, slotIndex, itemSize) {
+    for (let i = 0; i < itemSize; i++) {
         const occupiedSlot = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex + i}"]`);
         occupiedSlot.classList.add('occupied');
     }
 }
 
 export function highlightAdjacentSlots(slotIndex) {
-    // Clear previous highlights
     document.querySelectorAll('.slot.adjacent-highlight')
         .forEach(slot => slot.classList.remove('adjacent-highlight'));
     
-    // Highlight adjacent slots
     const leftSlot = document.querySelector(`.slot[data-index="${slotIndex - 1}"]`);
     const rightSlot = document.querySelector(`.slot[data-index="${slotIndex + 1}"]`);
     
@@ -311,10 +295,8 @@ export function renderSearchResults(items, onSelect) {
 export function findLeftmostEmptySlot(itemSize = 1) {
     if (!window.playerBoard) return 0;
     
-    // Look for a sequence of empty slots that can fit the item
     for (let i = 0; i < window.playerBoard.length; i++) {
         let canFit = true;
-        // Check if there are enough consecutive empty slots
         for (let j = 0; j < itemSize; j++) {
             if (i + j >= window.playerBoard.length || window.playerBoard[i + j] !== null) {
                 canFit = false;
@@ -325,5 +307,5 @@ export function findLeftmostEmptySlot(itemSize = 1) {
             return i;
         }
     }
-    return -1; // No space found
+    return -1;
 }
