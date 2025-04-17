@@ -1,6 +1,6 @@
 
 
-
+next commit: roguescrapper + monster selector + board rendering bugfix + boarrior"
 
 
 
@@ -26,6 +26,7 @@
 
 ## 🐛 Bug Fixes
 - [ ] Fix mobile device
+- [ ] Selecting enchantment when another one is applied ahh bug
 
 
 

@@ -242,26 +242,27 @@ body {
     position: absolute;
     top: 8px;
     right: 8px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #ccc;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: 4px;
     padding: 4px 8px;
     cursor: pointer;
     z-index: 10;
+    font-size: 16px;
 }
 
 .item-enchant-button:hover {
-    background: #f0f0f0;
+    background: rgba(255, 255, 255, 0.9);
 }
 
 .enchantment-dropdown {
     position: fixed;
-    background: #222; /* Dark background for better contrast */
-    color: #fff; /* White text for readability */
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Light border */
+    background: #222;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); /* Subtle shadow for depth */
-    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    z-index: 2000;
     max-height: 300px;
     overflow-y: auto;
     display: none;
@@ -286,7 +287,7 @@ body {
 }
 
 .enchantment-option:hover {
-    background: rgba(255, 255, 255, 0.1); /* Highlight on hover */
+    background: rgba(255, 255, 255, 0.2); /* Stronger highlight on hover */
 }
 
 .enchantment-option.selected {
@@ -294,13 +295,9 @@ body {
     color: #fff; /* White text */
 }
 
-/* Add enchantment indicator to items */
+/* Hide the enchantment sparkle on enchanted items since we have the button */
 .item.enchanted::after {
-    content: '✨';
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 16px;
+    display: none;
 }
 
 /* Add enchantment border colors */
@@ -454,5 +451,68 @@ body {
         transform: scale(1.5);
         top: 250px;
     }
+}
+
+/* Add styles for the monster selection section */
+.monster-selection {
+    width: 80%;
+    margin: 10px auto;
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.monster-selection h3 {
+    margin-top: 0;
+    color: #fff;
+    font-size: 18px;
+}
+
+#monster-select {
+    padding: 8px 12px;
+    background: #222;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    font-size: 16px;
+    width: 200px;
+    cursor: pointer;
+}
+
+#monster-select option {
+    background: #333;
+}
+
+#monster-select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.monster-name {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 5px;
+    background: rgba(255, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+/* Add this to prevent slots that are continuations from accepting new items */
+.slot.continuation {
+    pointer-events: none;
+}
+
+/* Fix the issue with items not spanning multiple slots */
+.item.size-2 {
+    width: calc((var(--slot-width) * 2) - 2px);
+    z-index: 5;
+}
+
+.item.size-3 {
+    width: calc((var(--slot-width) * 3) - 2px);
+    z-index: 5;
 }
 

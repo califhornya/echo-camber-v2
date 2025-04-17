@@ -1,6 +1,6 @@
 import { baseItem } from './baseItem.js';
 import { renderBoard, renderItem, highlightAdjacentSlots, renderSearchResults } from './render.js';
-import { testDatabase, monsterBuild } from './database.js';
+import { bazaar, coconutCrabBuild, rogueScrapper, boarrior } from './database.js';
 import { CombatSimulator } from './combat.js';
 
 window.playerBoard = Array(10).fill(null);
@@ -8,11 +8,12 @@ window.playerBoard = Array(10).fill(null);
 const state = {
     get slots() { return window.playerBoard; },
     set slots(value) { window.playerBoard = value; },
-    usedSlots: 0
+    usedSlots: 0,
+    selectedMonster: coconutCrabBuild // Default monster
 };
 
 function init() {
-    renderBoard('monster-board', true);
+    renderBoard('monster-board', true, state.selectedMonster);
     renderBoard('player-board', false);
     setupEventListeners();
 }
@@ -42,7 +43,7 @@ function placeItem(item, startSlot) {
 
 function handleSearch(e) {
     const query = e.target.value.trim();
-    const results = query ? testDatabase.searchItems(query) : testDatabase.items;
+    const results = query ? bazaar.searchItems(query) : bazaar.items;
     renderSearchResults(results, handleItemSelect);
 }
 
@@ -94,16 +95,22 @@ function setupEventListeners() {
             document.getElementById('search-results').style.display = 'none';
         }
     });
+
+    // Add monster select event listener
+    const monsterSelect = document.getElementById('monster-select');
+    monsterSelect.addEventListener('change', (e) => {
+        changeMonster(e.target.value);
+    });
 }
 
 function handleCombatSimulation() {
-    const simulator = new CombatSimulator(state.slots, monsterBuild);
+    const simulator = new CombatSimulator(state.slots, state.selectedMonster);
     const results = simulator.simulateFight(1);
     
     const resultsDiv = document.getElementById('combat-results');
     resultsDiv.innerHTML = `
         <div class="combat-summary">
-            <h3>Combat Results</h3>
+            <h3>Combat Results vs ${state.selectedMonster.name}</h3>
             <p>Wins: ${results.wins}</p>
             <p>Losses: ${results.losses}</p>
             <p>Win Rate: ${results.winRate.toFixed(1)}%</p>
@@ -145,5 +152,24 @@ function handleOrientationChange() {
 
 window.addEventListener('orientationchange', handleOrientationChange);
 window.addEventListener('load', handleOrientationChange);
+
+function changeMonster(monsterKey) {
+    switch(monsterKey) {
+        case 'coconutCrab':
+            state.selectedMonster = coconutCrabBuild;
+            break;
+        case 'rogueScrapper':
+            state.selectedMonster = rogueScrapper;
+            break;
+        case 'boarrior':
+            state.selectedMonster = boarrior;
+            break;
+        default:
+            state.selectedMonster = coconutCrabBuild;
+    }
+    
+    // Update the monster board display
+    renderBoard('monster-board', true, state.selectedMonster);
+}
 
 init();

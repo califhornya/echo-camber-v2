@@ -1,13 +1,14 @@
-import { monsterBuild } from './database.js';
+import { bazaar, coconutCrabBuild, rogueScrapper } from './database.js';
 import { applyEnchantment, removeEnchantment } from './combat.js';
 
 const ENCHANTMENT_TYPES = ['heavy', 'icy', 'turbo', 'shielded', 'restorative', 
     'toxic', 'fiery', 'shiny', 'deadly', 'radiant', 'obsidian'];
 
-export function renderBoard(boardClass, isMonster = false) {
+export function renderBoard(boardClass, isMonster = false, monsterData = null) {
     const board = document.querySelector(`.${boardClass}`);
     board.innerHTML = '';
     
+    // Create slots
     for (let i = 0; i < 10; i++) {
         const slot = document.createElement('div');
         slot.className = 'slot';
@@ -15,9 +16,33 @@ export function renderBoard(boardClass, isMonster = false) {
         board.appendChild(slot);
     }
 
-    if (isMonster && monsterBuild) {
-        monsterBuild.slots.forEach((item, index) => {
-            if (item) renderItem(item, index, boardClass);
+    // Add monster name if this is a monster board and we have monster data
+    if (isMonster && monsterData) {
+        // Remove any existing monster name
+        const container = board.closest('.monster-container') || board.parentElement;
+        const existingMonsterName = container.querySelector('.monster-name');
+        if (existingMonsterName) {
+            existingMonsterName.remove();
+        }
+        
+        // Create and add new monster name
+        const monsterNameEl = document.createElement('div');
+        monsterNameEl.className = 'monster-name';
+        monsterNameEl.textContent = monsterData.name;
+        container.insertBefore(monsterNameEl, board);
+        
+        // Render monster items accounting for size
+        const renderedSlots = new Set();
+        
+        monsterData.slots.forEach((item, index) => {
+            if (item && !renderedSlots.has(index)) {
+                renderItem(item, index, boardClass);
+                
+                // Mark all slots this item occupies as rendered
+                for (let i = 0; i < item.size; i++) {
+                    renderedSlots.add(index + i);
+                }
+            }
         });
     }
 }
@@ -26,7 +51,19 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
     const slot = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex}"]`);
     if (!slot) return;
     
-    slot.innerHTML = '';
+    // Clear any existing content
+    for (let i = 0; i < item.size; i++) {
+        const slotToCheck = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex + i}"]`);
+        if (slotToCheck) {
+            slotToCheck.innerHTML = '';
+            slotToCheck.className = 'slot';
+            if (i > 0) {
+                slotToCheck.classList.add('continuation');
+            }
+        }
+    }
+    
+    // Create the item element
     const itemElement = document.createElement('div');
     itemElement.className = `item size-${item.size}`;
     
@@ -92,8 +129,18 @@ function addEnchantmentButton(itemElement, item, slot, boardClass) {
     enchantButton.textContent = '✨';
     enchantButton.title = 'Enchant item';
     
+    // Create dropdown and attach a unique ID based on the item and slot
+    const dropdownId = `enchantment-dropdown-${boardClass}-${slot.dataset.index}`;
+    
+    // Remove any existing dropdown with this ID to prevent duplicates
+    const existingDropdown = document.getElementById(dropdownId);
+    if (existingDropdown) {
+        existingDropdown.remove();
+    }
+    
     const dropdown = document.createElement('div');
     dropdown.className = 'enchantment-dropdown';
+    dropdown.id = dropdownId;
     
     Object.entries(item.enchantmentEffects).forEach(([key, enchant]) => {
         const option = document.createElement('div');
@@ -130,9 +177,8 @@ function addEnchantmentButton(itemElement, item, slot, boardClass) {
         option.addEventListener('click', (e) => {
             e.stopPropagation();
             applyEnchantment(item, key);
-            document.querySelectorAll('.enchantment-dropdown').forEach(d => {
-                d.classList.remove('active');
-            });
+            // Hide dropdown after selection
+            dropdown.classList.remove('active');
             renderItem(item, parseInt(slot.dataset.index), boardClass);
         });
         
@@ -141,39 +187,30 @@ function addEnchantmentButton(itemElement, item, slot, boardClass) {
     
     enchantButton.addEventListener('click', (e) => {
         e.stopPropagation();
+        
+        // Close all other dropdowns
         document.querySelectorAll('.enchantment-dropdown.active').forEach(d => {
-            if (d !== dropdown) d.classList.remove('active');
+            d.classList.remove('active');
         });
         
+        // Position the dropdown
         const buttonRect = enchantButton.getBoundingClientRect();
+        dropdown.style.top = `${buttonRect.bottom + 5}px`;
         dropdown.style.left = `${buttonRect.left}px`;
-        dropdown.style.top = `${buttonRect.top - dropdown.offsetHeight - 5}px`;
         
+        // Toggle dropdown visibility
         dropdown.classList.toggle('active');
     });
     
-    document.addEventListener('click', (e) => {
-        const clickX = e.clientX;
-        const clickY = e.clientY;
-        const dropdownRect = dropdown.getBoundingClientRect();
-        const buttonRect = enchantButton.getBoundingClientRect();
-        
-        const outsideDropdown = clickX < dropdownRect.left || 
-                               clickX > dropdownRect.right || 
-                               clickY < dropdownRect.top || 
-                               clickY > dropdownRect.bottom;
-        const outsideButton = clickX < buttonRect.left || 
-                             clickX > buttonRect.right || 
-                             clickY < buttonRect.top || 
-                             clickY > buttonRect.bottom;
-                             
-        if (outsideDropdown && outsideButton) {
+    // Add document click handler to close dropdown
+    document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && !enchantButton.contains(e.target)) {
             dropdown.classList.remove('active');
         }
     });
     
     itemElement.appendChild(enchantButton);
-    itemElement.appendChild(dropdown);
+    document.body.appendChild(dropdown);
 }
 
 function addItemName(itemElement, item) {
@@ -250,8 +287,13 @@ function addItemStats(itemElement, item) {
 
 function markOccupiedSlots(boardClass, slotIndex, itemSize) {
     for (let i = 0; i < itemSize; i++) {
-        const occupiedSlot = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex + i}"]`);
-        occupiedSlot.classList.add('occupied');
+        const slotToMark = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex + i}"]`);
+        if (slotToMark) {
+            slotToMark.classList.add('occupied');
+            if (i > 0) {
+                slotToMark.classList.add('continuation');
+            }
+        }
     }
 }
 

@@ -7,6 +7,7 @@ export class CombatSimulator {
 
         this.playerState = {
             hp: 250,
+            maxHp: 250,
             shield: 0,
             poison: { value: 0 },
             burn: { value: 0 }
@@ -14,6 +15,7 @@ export class CombatSimulator {
 
         this.monsterState = {
             hp: monsterBoard.health || 200,
+            maxHp: monsterBoard.health || 200,
             shield: 0,
             poison: { value: 0 },
             burn: { value: 0 }
@@ -153,17 +155,15 @@ export class CombatSimulator {
         const startDamage = this.sandstormDamage;
         const endDamage = this.sandstormDamage + 4;
         const totalDamage = (startDamage + endDamage) * 5 / 2;
-
-        const playerShieldedDamage = Math.max(0, totalDamage - this.playerState.shield);
-        this.playerState.shield = Math.max(0, this.playerState.shield - totalDamage);
-        this.playerState.hp -= playerShieldedDamage;
-
-        const monsterShieldedDamage = Math.max(0, totalDamage - this.monsterState.shield);
-        this.monsterState.shield = Math.max(0, this.monsterState.shield - totalDamage);
-        this.monsterState.hp -= monsterShieldedDamage;
-
-        this.log(`Sandstorm deals ${startDamage}+${startDamage + 1}+${startDamage + 2}+${startDamage + 3}+${startDamage + 4} = ${totalDamage} damage to both players!`, "damage");
-
+        
+        this.log(`Sandstorm deals ${startDamage}+${startDamage + 1}+${startDamage + 2}+${startDamage + 3}+${startDamage + 4} = ${totalDamage} damage!`, "damage");
+        
+        // Apply sandstorm damage to player
+        this.applyDamage(this.playerState, totalDamage, "Player", "Sandstorm");
+        
+        // Apply sandstorm damage to monster
+        this.applyDamage(this.monsterState, totalDamage, "Monster", "Sandstorm");
+        
         this.sandstormDamage += 5;
     }
 
@@ -192,6 +192,7 @@ export class CombatSimulator {
 
         const sourceName = sourceState === this.playerState ? 'Player' : 'Monster';
         const targetName = targetState === this.playerState ? 'Player' : 'Monster';
+        const sourceBoard = sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots;
 
         if (item.maxAmmo > 0) {
             if (item.ammo <= 0) {
@@ -208,8 +209,7 @@ export class CombatSimulator {
         if (item.name === "Crusher Claw") {
             const shieldBonus = this.getHighestShieldValue(sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots);
             const damage = shieldBonus;
-            targetState.hp -= damage;
-            this.log(`${targetName} takes ${damage} damage from ${item.name} (based on shield bonus).`, 'damage');
+            this.applyDamage(targetState, damage, targetName, item.name);
             return;
         }
 
@@ -220,8 +220,9 @@ export class CombatSimulator {
                 if (item.damageMultiplier) {
                     damage *= item.damageMultiplier;
                 }
-                targetState.hp -= damage;
-                this.log(`${targetName} takes ${damage} damage`, 'damage');
+                
+                // Apply damage with shield mitigation
+                this.applyDamage(targetState, damage, targetName, item.name);
             }
 
             if (item.burn) {
@@ -248,6 +249,9 @@ export class CombatSimulator {
 
                 sourceState.shield += shieldAmount;
                 this.log(`${sourceName} gains ${shieldAmount} shield from ${item.name}.`, 'shield');
+                
+                // Trigger Barbed Wire effect when shield is applied
+                this.applyBarbedWireEffect(sourceBoard);
             }
 
             if (item.poison) {
@@ -276,8 +280,19 @@ export class CombatSimulator {
                     }
                 }
 
-                sourceState.hp += healAmount;
-                this.log(`${sourceName} heals for ${healAmount} HP.`, 'heal');
+                // Calculate actual healing (capped by maxHp)
+                const missingHp = sourceState.maxHp - sourceState.hp;
+                const actualHeal = Math.min(healAmount, missingHp);
+                sourceState.hp += actualHeal;
+                
+                if (actualHeal > 0) {
+                    this.log(`${sourceName} heals for ${actualHeal} HP.`, 'heal');
+                    if (actualHeal < healAmount) {
+                        this.log(`${healAmount - actualHeal} overheal.`, 'heal');
+                    }
+                } else if (healAmount > 0) {
+                    this.log(`${sourceName} is already at full health.`, 'heal');
+                }
             }
         }
 
@@ -387,6 +402,7 @@ export class CombatSimulator {
     resetState() {
         this.playerState = {
             hp: 250,
+            maxHp: 250,
             shield: 0,
             poison: { value: 0 },
             burn: { value: 0 }
@@ -394,6 +410,7 @@ export class CombatSimulator {
 
         this.monsterState = {
             hp: this.monsterBoard.health || 200,
+            maxHp: this.monsterBoard.health || 200,
             shield: 0,
             poison: { value: 0 },
             burn: { value: 0 }
@@ -450,6 +467,44 @@ export class CombatSimulator {
             this.log(`${targetItem.name} is hastened for ${hasteAmount} seconds!`, 'trigger');
             
             eligibleItems.splice(randomIndex, 1);
+        }
+    }
+
+    // Add a new method to handle Barbed Wire's special ability
+    applyBarbedWireEffect(board) {
+        const barbedWires = board.filter(item => item && item.name === "Barbed Wire");
+        
+        if (barbedWires.length > 0) {
+            barbedWires.forEach(barbedWire => {
+                barbedWire.damage += 10;
+                this.log(`Barbed Wire's damage increased by 10. New damage: ${barbedWire.damage}`, 'trigger');
+            });
+        }
+    }
+
+    // New method to apply damage with shield mitigation
+    applyDamage(targetState, damage, targetName, itemName) {
+        // Check how much damage can be absorbed by the shield
+        const shieldAbsorbed = Math.min(damage, targetState.shield);
+        
+        // Reduce shield by the amount of damage it absorbed
+        targetState.shield -= shieldAbsorbed;
+        
+        // Calculate the remaining damage that will affect HP
+        const remainingDamage = damage - shieldAbsorbed;
+        
+        // Apply the remaining damage to HP
+        targetState.hp -= remainingDamage;
+        
+        // Log the shield absorption and damage
+        if (shieldAbsorbed > 0) {
+            this.log(`${targetName}'s shield absorbs ${shieldAbsorbed} damage from ${itemName}.`, 'shield');
+        }
+        
+        if (remainingDamage > 0) {
+            this.log(`${targetName} takes ${remainingDamage} damage from ${itemName}.`, 'damage');
+        } else {
+            this.log(`${targetName}'s shield completely blocks the damage!`, 'shield');
         }
     }
 }
