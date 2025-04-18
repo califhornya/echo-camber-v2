@@ -48,10 +48,19 @@ export function renderBoard(boardClass, isMonster = false, monsterData = null) {
 }
 
 export function renderItem(item, slotIndex, boardClass = 'player-board') {
+    console.log(`[DEBUG] Rendering item ${item.name} at slot ${slotIndex} with tier ${item.currentTier}`);
+    console.log(`[DEBUG] Item properties:`, JSON.stringify({
+        type: item.type,
+        tier: item.currentTier,
+        cost: item.cost || (item.tiers && item.currentTier ? item.tiers[item.currentTier].cost : 'N/A'),
+        damage: item.damage || (item.tiers && item.currentTier ? item.tiers[item.currentTier].damage : 'N/A'),
+        cooldown: item.cooldown || (item.tiers && item.currentTier ? item.tiers[item.currentTier].cooldown : 'N/A')
+    }, null, 2));
+    
     const slot = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex}"]`);
     if (!slot) return;
     
-    // Clear any existing content
+    // Clear existing content
     for (let i = 0; i < item.size; i++) {
         const slotToCheck = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex + i}"]`);
         if (slotToCheck) {
@@ -66,6 +75,15 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
     // Create the item element
     const itemElement = document.createElement('div');
     itemElement.className = `item size-${item.size}`;
+    
+    // Set size explicitly via style to ensure it's respected
+    if (item.size > 1) {
+        itemElement.style.width = `calc(var(--slot-width) * ${item.size})`;
+    }
+    
+    // Add tier class for styling
+    const tierClass = item.currentTier || item.tier || "Bronze";
+    itemElement.classList.add(`tier-${tierClass.toLowerCase()}`);
     
     if (item.enchantment) {
         itemElement.classList.add('enchanted');
@@ -83,25 +101,42 @@ export function renderItem(item, slotIndex, boardClass = 'player-board') {
         itemElement.appendChild(imageContainer);
     }
     
-    if (boardClass === 'player-board') {
-        addRemoveButton(itemElement, slot, item);
-    }
-    
-    if (item.enchantmentEffects) {
-        addEnchantmentButton(itemElement, item, slot, boardClass);
-    }
-    
     addItemName(itemElement, item);
-    addItemStats(itemElement, item);
+    
+    // Create container for control buttons at the bottom
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'item-controls-container';
+    
+    // Left side controls (remove and settings)
+    const leftControls = document.createElement('div');
+    leftControls.className = 'item-left-controls';
+    
+    if (boardClass === 'player-board') {
+        // Add remove and options buttons to the left controls
+        addRemoveButton(leftControls, slot, item);
+        addOptionsButton(leftControls, item, slot, boardClass);
+    }
+    
+    controlsContainer.appendChild(leftControls);
+    
+    // Right side controls (info button)
+    const rightControls = document.createElement('div');
+    rightControls.className = 'item-right-controls';
+    
+    // Add info button to the right controls
+    addInfoButton(rightControls, item);
+    
+    controlsContainer.appendChild(rightControls);
+    itemElement.appendChild(controlsContainer);
     
     slot.appendChild(itemElement);
     markOccupiedSlots(boardClass, slotIndex, item.size);
 }
 
-function addRemoveButton(itemElement, slot, item) {
+function addRemoveButton(container, slot, item) {
     const removeButton = document.createElement('button');
-    removeButton.className = 'item-remove-button';
-    removeButton.textContent = '×';
+    removeButton.className = 'item-button remove-button';
+    removeButton.innerHTML = '<span class="button-icon">×</span>';
     removeButton.title = 'Remove item';
     
     removeButton.addEventListener('click', (e) => {
@@ -112,105 +147,371 @@ function addRemoveButton(itemElement, slot, item) {
             window.playerBoard[slotIndex + j] = null;
         }
         
-        itemElement.remove();
-        
+        // Clear slot content directly
         for (let j = 0; j < item.size; j++) {
             const occupiedSlot = document.querySelector(`.player-board .slot[data-index="${slotIndex + j}"]`);
-            if (occupiedSlot) occupiedSlot.classList.remove('occupied');
+            if (occupiedSlot) {
+                occupiedSlot.innerHTML = '';
+                occupiedSlot.classList.remove('occupied', 'continuation');
+            }
         }
     });
     
-    itemElement.appendChild(removeButton);
+    container.appendChild(removeButton);
 }
 
-function addEnchantmentButton(itemElement, item, slot, boardClass) {
-    const enchantButton = document.createElement('button');
-    enchantButton.className = 'item-enchant-button';
-    enchantButton.textContent = '✨';
-    enchantButton.title = 'Enchant item';
+function addOptionsButton(container, item, slot, boardClass) {
+    const optionsButton = document.createElement('button');
+    optionsButton.className = 'item-button options-button';
+    optionsButton.innerHTML = '<span class="button-icon">⚙️</span>';
+    optionsButton.title = 'Item options';
     
-    // Create dropdown and attach a unique ID based on the item and slot
-    const dropdownId = `enchantment-dropdown-${boardClass}-${slot.dataset.index}`;
+    optionsButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showItemOptionsModal(item, slot, boardClass);
+    });
     
-    // Remove any existing dropdown with this ID to prevent duplicates
-    const existingDropdown = document.getElementById(dropdownId);
-    if (existingDropdown) {
-        existingDropdown.remove();
+    container.appendChild(optionsButton);
+}
+
+function showItemOptionsModal(item, slot, boardClass) {
+    // Remove any existing modal
+    const existingModal = document.getElementById('item-options-modal');
+    if (existingModal) {
+        existingModal.remove();
     }
     
-    const dropdown = document.createElement('div');
-    dropdown.className = 'enchantment-dropdown';
-    dropdown.id = dropdownId;
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.id = 'item-options-modal';
+    modal.className = 'modal';
     
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    // Add header with item name and close button
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const itemName = document.createElement('h2');
+    itemName.textContent = item.name;
+    modalHeader.appendChild(itemName);
+    
+    const closeButton = document.createElement('span');
+    closeButton.className = 'close-button';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', () => modal.remove());
+    modalHeader.appendChild(closeButton);
+    
+    modalContent.appendChild(modalHeader);
+    
+    // Create tabs for different option categories
+    const tabContainer = document.createElement('div');
+    tabContainer.className = 'tab-container';
+    
+    const tabButtons = document.createElement('div');
+    tabButtons.className = 'tab-buttons';
+    
+    const tabContents = document.createElement('div');
+    tabContents.className = 'tab-contents';
+    
+    // Define tabs
+    const tabs = [
+        {
+            id: 'tier',
+            label: 'Tier',
+            content: createTierOptions(item, slot, boardClass)
+        },
+        {
+            id: 'enchantment',
+            label: 'Enchantment',
+            content: createEnchantmentOptions(item, slot, boardClass)
+        },
+        {
+            id: 'attributes',
+            label: 'Attributes',
+            content: createAttributeOptions(item, slot, boardClass)
+        }
+    ];
+    
+    // Create tab buttons and content
+    tabs.forEach((tab, index) => {
+        const button = document.createElement('button');
+        button.className = 'tab-button' + (index === 0 ? ' active' : '');
+        button.textContent = tab.label;
+        button.dataset.tabId = tab.id;
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            button.classList.add('active');
+            document.getElementById(`tab-${tab.id}`).classList.add('active');
+        });
+        
+        tabButtons.appendChild(button);
+        
+        const content = document.createElement('div');
+        content.id = `tab-${tab.id}`;
+        content.className = 'tab-content' + (index === 0 ? ' active' : '');
+        content.appendChild(tab.content);
+        
+        tabContents.appendChild(content);
+    });
+    
+    tabContainer.appendChild(tabButtons);
+    tabContainer.appendChild(tabContents);
+    
+    modalContent.appendChild(tabContainer);
+    
+    // Add save button
+    const saveButton = document.createElement('button');
+    saveButton.className = 'save-button';
+    saveButton.textContent = 'Apply Changes';
+    saveButton.addEventListener('click', () => {
+        // Apply pending tier change if any
+        if (item._pendingTier) {
+            console.log(`[DEBUG] Applying tier change from ${item.currentTier || item.tier} to ${item._pendingTier}`);
+            
+            // Directly set the tier
+            if (item.tiers) {
+                item.currentTier = item._pendingTier;
+            } else {
+                item.tier = item._pendingTier;
+            }
+            
+            // Copy tier-specific properties to the item's root level for compatibility
+            if (item.tiers && item.tiers[item.currentTier]) {
+                Object.assign(item, item.tiers[item.currentTier]);
+                console.log(`[DEBUG] Applied tier properties:`, item.tiers[item.currentTier]);
+            }
+            
+            // Clear the pending tier
+            delete item._pendingTier;
+        }
+        
+        // Re-render the item to reflect changes
+        renderItem(item, parseInt(slot.dataset.index), boardClass);
+        modal.remove();
+    });
+    
+    modalContent.appendChild(saveButton);
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Close modal when clicking outside of it
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function createTierOptions(item, slot, boardClass) {
+    const container = document.createElement('div');
+    container.className = 'tier-options-container';
+    
+    const tierTitle = document.createElement('h3');
+    tierTitle.textContent = 'Item Tier';
+    container.appendChild(tierTitle);
+    
+    // Create tier selection
+    const tierSelector = document.createElement('div');
+    tierSelector.className = 'tier-selector';
+    
+    // Show current tier info
+    const currentTierDisplay = document.createElement('div');
+    currentTierDisplay.className = 'current-tier-display';
+    currentTierDisplay.textContent = `Current Tier: ${item.currentTier || item.tier || "Bronze"}`;
+    container.appendChild(currentTierDisplay);
+    
+    console.log(`[DEBUG] Starting tier selection UI for ${item.name}, current tier: ${item.currentTier || item.tier}`);
+    
+    const tierOptions = ["Bronze", "Silver", "Gold", "Diamond"];
+    const currentTier = item.currentTier || item.tier || "Bronze";
+    
+    tierOptions.forEach(tierOption => {
+        const tierButton = document.createElement('button');
+        tierButton.className = 'tier-option' + (tierOption === currentTier ? ' selected' : '');
+        tierButton.dataset.tier = tierOption;
+        tierButton.textContent = tierOption;
+        
+        tierButton.addEventListener('click', () => {
+            console.log(`[DEBUG] Tier button clicked: ${tierOption}`);
+            
+            // Update visual selection
+            document.querySelectorAll('.tier-option').forEach(btn => btn.classList.remove('selected'));
+            tierButton.classList.add('selected');
+            
+            // Store the target tier for when Apply Changes is clicked
+            item._pendingTier = tierOption;
+            currentTierDisplay.textContent = `Current Tier: ${item.currentTier || item.tier} (Will change to: ${tierOption})`;
+        });
+        
+        tierSelector.appendChild(tierButton);
+    });
+    
+    container.appendChild(tierSelector);
+    
+    return container;
+}
+
+function createEnchantmentOptions(item, slot, boardClass) {
+    const container = document.createElement('div');
+    container.className = 'enchantment-options-container';
+    
+    const enchantTitle = document.createElement('h3');
+    enchantTitle.textContent = 'Enchantments';
+    container.appendChild(enchantTitle);
+    
+    // Add "No Enchantment" option
+    const noEnchantOption = document.createElement('div');
+    noEnchantOption.className = 'enchantment-option' + (!item.enchantment ? ' selected' : '');
+    noEnchantOption.dataset.enchantment = '';
+    
+    const noEnchantLabel = document.createElement('span');
+    noEnchantLabel.textContent = 'No Enchantment';
+    noEnchantOption.appendChild(noEnchantLabel);
+    
+    noEnchantOption.addEventListener('click', () => {
+        document.querySelectorAll('.enchantment-option').forEach(opt => opt.classList.remove('selected'));
+        noEnchantOption.classList.add('selected');
+        removeEnchantment(item);
+    });
+    
+    container.appendChild(noEnchantOption);
+    
+    // If there are no enchantment effects, return early
+    if (!item.enchantmentEffects) {
+        const noEffectsMsg = document.createElement('p');
+        noEffectsMsg.textContent = 'This item cannot be enchanted.';
+        container.appendChild(noEffectsMsg);
+        return container;
+    }
+    
+    // Add enchantment options
     Object.entries(item.enchantmentEffects).forEach(([key, enchant]) => {
-        const option = document.createElement('div');
-        option.className = 'enchantment-option';
+        const enchantOption = document.createElement('div');
+        enchantOption.className = 'enchantment-option' + (item.enchantment === key ? ' selected' : '');
+        enchantOption.dataset.enchantment = key;
         
-        if (item.enchantment === key) {
-            option.classList.add('selected');
-            
-            const container = document.createElement('div');
-            container.style.display = 'flex';
-            container.style.justifyContent = 'space-between';
-            container.style.alignItems = 'center';
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = enchant.name;
-            container.appendChild(nameSpan);
-            
-            const removeButton = document.createElement('span');
-            removeButton.textContent = '×';
-            removeButton.className = 'enchantment-remove';
-            removeButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                removeEnchantment(item);
-                renderItem(item, parseInt(slot.dataset.index), boardClass);
-                dropdown.classList.remove('active');
-            });
-            container.appendChild(removeButton);
-            
-            option.appendChild(container);
-        } else {
-            option.textContent = enchant.name;
+        const enchantLabel = document.createElement('span');
+        enchantLabel.textContent = enchant.name;
+        enchantOption.appendChild(enchantLabel);
+        
+        // Add effect description
+        const effectDescription = document.createElement('p');
+        effectDescription.className = 'enchantment-description';
+        
+        // Generate effect description based on enchantment type
+        let description = '';
+        const effect = enchant.effect;
+        
+        if (effect.damage) description += `+${effect.damage} Damage. `;
+        if (effect.damageMultiplier) description += `${effect.damageMultiplier}x Damage. `;
+        if (effect.shield) description += `+${effect.shieldAmount || 'Scaled'} Shield. `;
+        if (effect.heal) description += `+${effect.healAmount || 'Scaled'} Heal. `;
+        if (effect.burn) description += `+${effect.burn} Burn. `;
+        if (effect.poison) description += `+${effect.poison || 'Scaled'} Poison. `;
+        if (effect.slowTargets) description += `Slow ${effect.slowTargets} targets for ${effect.slowDuration}s. `;
+        if (effect.freezeTargets) description += `Freeze ${effect.freezeTargets} targets for ${effect.freezeDuration}s. `;
+        if (effect.hasteTargets) description += `Haste ${effect.hasteTargets} targets for ${effect.hasteDuration}s. `;
+        if (effect.cooldown) description += `Cooldown: ${effect.cooldown}s. `;
+        if (effect.crit) description += `+${effect.crit * 100}% Crit Chance. `;
+        if (effect.critMultiplier) description += `${effect.critMultiplier}x Crit Damage. `;
+        if (effect.multicast) description += `+${effect.multicast} Multicast. `;
+        
+        if (effect.scalingType && effect.scaler) {
+            description += `Scales with ${effect.scaler}.`;
         }
         
-        option.addEventListener('click', (e) => {
-            e.stopPropagation();
+        effectDescription.textContent = description || 'No effects.';
+        enchantOption.appendChild(effectDescription);
+        
+        enchantOption.addEventListener('click', () => {
+            document.querySelectorAll('.enchantment-option').forEach(opt => opt.classList.remove('selected'));
+            enchantOption.classList.add('selected');
             applyEnchantment(item, key);
-            // Hide dropdown after selection
-            dropdown.classList.remove('active');
-            renderItem(item, parseInt(slot.dataset.index), boardClass);
         });
         
-        dropdown.appendChild(option);
+        container.appendChild(enchantOption);
     });
     
-    enchantButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        
-        // Close all other dropdowns
-        document.querySelectorAll('.enchantment-dropdown.active').forEach(d => {
-            d.classList.remove('active');
-        });
-        
-        // Position the dropdown
-        const buttonRect = enchantButton.getBoundingClientRect();
-        dropdown.style.top = `${buttonRect.bottom + 5}px`;
-        dropdown.style.left = `${buttonRect.left}px`;
-        
-        // Toggle dropdown visibility
-        dropdown.classList.toggle('active');
-    });
+    return container;
+}
+
+function createAttributeOptions(item, slot, boardClass) {
+    const container = document.createElement('div');
+    container.className = 'attribute-options-container';
     
-    // Add document click handler to close dropdown
-    document.addEventListener('click', function closeDropdown(e) {
-        if (!dropdown.contains(e.target) && !enchantButton.contains(e.target)) {
-            dropdown.classList.remove('active');
+    const attributesTitle = document.createElement('h3');
+    attributesTitle.textContent = 'Item Attributes';
+    container.appendChild(attributesTitle);
+    
+    // Create scrollable attributes list
+    const attributesList = document.createElement('div');
+    attributesList.className = 'attributes-list';
+    
+    // Get base attributes that can be edited
+    const editableAttributes = [
+        { key: 'damage', label: 'Damage', type: 'number' },
+        { key: 'cost', label: 'Cost', type: 'number' },
+        { key: 'cooldown', label: 'Cooldown', type: 'number', step: 0.5 },
+        { key: 'crit', label: 'Crit Chance', type: 'number', step: 0.05, max: 1, formatter: value => (value * 100).toFixed(0) + '%', parser: value => parseFloat(value) / 100 },
+        { key: 'critMultiplier', label: 'Crit Multiplier', type: 'number', step: 0.5 },
+        { key: 'shieldAmount', label: 'Shield Amount', type: 'number' },
+        { key: 'healAmount', label: 'Heal Amount', type: 'number' },
+        { key: 'burn', label: 'Burn', type: 'number' },
+        { key: 'poison', label: 'Poison', type: 'number' },
+        { key: 'multicast', label: 'Multicast', type: 'number' },
+        { key: 'size', label: 'Size', type: 'number', min: 1, max: 3 }
+    ];
+    
+    // Create form fields for each editable attribute that exists on the item
+    editableAttributes.forEach(attr => {
+        let value;
+        
+        // For tiered items, get values from the current tier
+        if (item.tiers && item.currentTier && item.tiers[item.currentTier] && item.tiers[item.currentTier][attr.key] !== undefined) {
+            value = item.tiers[item.currentTier][attr.key];
+        } else if (item[attr.key] !== undefined) {
+            value = item[attr.key];
+        } else {
+            return; // Skip attributes that don't exist on this item
         }
+        
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+        
+        const label = document.createElement('label');
+        label.textContent = attr.label;
+        formGroup.appendChild(label);
+        
+        const input = document.createElement('input');
+        input.type = attr.type;
+        input.value = attr.formatter ? attr.formatter(value) : value;
+        input.min = attr.min !== undefined ? attr.min : 0;
+        if (attr.max !== undefined) input.max = attr.max;
+        if (attr.step !== undefined) input.step = attr.step;
+        
+        input.addEventListener('change', () => {
+            let newValue = attr.parser ? attr.parser(input.value) : parseFloat(input.value);
+            
+            // For tiered items, update the value in the current tier
+            if (item.tiers && item.currentTier) {
+                item.tiers[item.currentTier][attr.key] = newValue;
+            } else {
+                item[attr.key] = newValue;
+            }
+        });
+        
+        formGroup.appendChild(input);
+        attributesList.appendChild(formGroup);
     });
     
-    itemElement.appendChild(enchantButton);
-    document.body.appendChild(dropdown);
+    container.appendChild(attributesList);
+    
+    return container;
 }
 
 function addItemName(itemElement, item) {
@@ -227,62 +528,174 @@ function addItemName(itemElement, item) {
     itemElement.appendChild(nameDiv);
 }
 
-function addItemStats(itemElement, item) {
-    const statsDiv = document.createElement('div');
-    statsDiv.className = 'item-stats';
+function addInfoButton(container, item) {
+    const infoButton = document.createElement('button');
+    infoButton.className = 'item-button info-button';
+    infoButton.innerHTML = '<span class="button-icon">ℹ️</span>';
+    infoButton.title = 'Show item stats';
     
+    // Create tooltip element
+    const tooltip = document.createElement('div');
+    tooltip.className = 'item-stats-tooltip';
+    tooltip.id = `tooltip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Generate stats content
+    const statsContent = generateItemStatsContent(item);
+    tooltip.innerHTML = statsContent;
+    
+    // Add tooltip to document body instead of as a child of the button
+    document.body.appendChild(tooltip);
+    
+    // Add event listeners for hover
+    infoButton.addEventListener('mouseenter', (e) => {
+        const tooltipId = tooltip.id;
+        const tooltipElement = document.getElementById(tooltipId);
+        if (!tooltipElement) return;
+        
+        tooltipElement.style.display = 'block';
+        
+        // Position the tooltip near the button but not as a child
+        const buttonRect = infoButton.getBoundingClientRect();
+        tooltipElement.style.left = `${buttonRect.left}px`;
+        tooltipElement.style.top = `${buttonRect.top - tooltipElement.offsetHeight - 10}px`;
+        
+        // Check if tooltip is going off screen and adjust if needed
+        const tooltipRect = tooltipElement.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        if (tooltipRect.right > viewportWidth) {
+            tooltipElement.style.left = `${buttonRect.right - tooltipElement.offsetWidth}px`;
+        }
+        
+        if (tooltipRect.top < 0) {
+            tooltipElement.style.top = `${buttonRect.bottom + 10}px`;
+            tooltipElement.classList.add('tooltip-below');
+        }
+    });
+    
+    infoButton.addEventListener('mouseleave', () => {
+        const tooltipId = tooltip.id;
+        const tooltipElement = document.getElementById(tooltipId);
+        if (tooltipElement) {
+            tooltipElement.style.display = 'none';
+            tooltipElement.classList.remove('tooltip-below');
+        }
+    });
+    
+    // Clean up tooltip when button is removed from DOM
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (!document.body.contains(infoButton)) {
+                const tooltipId = tooltip.id;
+                const tooltipElement = document.getElementById(tooltipId);
+                if (tooltipElement) {
+                    tooltipElement.remove();
+                }
+                observer.disconnect();
+            }
+        });
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    container.appendChild(infoButton);
+}
+
+function generateItemStatsContent(item) {
     const stats = [];
     
-    if (item.damage) {
-        let damage = item.damage;
-        if (item.damageMultiplier) {
-            damage *= item.damageMultiplier;
+    // Get the current tier, either from the tier system or from the tier property
+    const currentTier = item.currentTier || item.tier || "Bronze";
+    
+    // Function to get value either from tier or directly from item
+    const getValue = (prop) => {
+        if (item.tiers && item.tiers[currentTier] && item.tiers[currentTier][prop] !== undefined) {
+            return item.tiers[currentTier][prop];
         }
-        stats.push(`<span class="stat-damage">Damage: ${damage}</span>`);
+        return item[prop];
+    };
+    
+    // Add cost information
+    const cost = getValue('cost');
+    if (cost) {
+        stats.push(`<div>Cost: ${cost} gold</div>`);
     }
-    if (item.cooldown) {
-        stats.push(`Cooldown: ${item.cooldown}s`);
+    
+    if (getValue('damage')) {
+        let damage = getValue('damage');
+        if (getValue('damageMultiplier')) {
+            damage *= getValue('damageMultiplier');
+        }
+        stats.push(`<div class="stat-damage">Damage: ${damage}</div>`);
     }
-    if (item.multicast && item.multicast > 1) {
-        stats.push(`Multicast: ${item.multicast}`);
+    
+    if (getValue('cooldown')) {
+        stats.push(`<div>Cooldown: ${getValue('cooldown')}s</div>`);
     }
-    if (item.crit) {
-        stats.push(`Crit Chance: ${item.crit * 100}%`);
+    
+    if (getValue('multicast') && getValue('multicast') > 1) {
+        stats.push(`<div>Multicast: ${getValue('multicast')}</div>`);
     }
-    if (item.critMultiplier == 3) {
-        stats.push(`Double Crit Damage`);
+    
+    if (getValue('crit')) {
+        stats.push(`<div>Crit Chance: ${getValue('crit') * 100}%</div>`);
     }
-    if (item.critMultiplier == 4) {
-        stats.push(`Triple Crit Damage`);
+    
+    if (getValue('critMultiplier') == 3) {
+        stats.push(`<div>Double Crit Damage</div>`);
     }
-    if (item.critMultiplier == 5) {
-        stats.push(`Quadruple Crit Damage`);
+    if (getValue('critMultiplier') == 4) {
+        stats.push(`<div>Triple Crit Damage</div>`);
     }
-
-    if (item.shield) {
-        stats.push(`<span class="stat-shield">Shield: ${item.shieldAmount}</span>`);
-    }
-    if (item.heal) {
-        stats.push(`<span class="stat-heal">Heal: ${item.healAmount}</span>`);
-    }
-    if (item.poison) {
-        stats.push(`<span class="stat-effect">Poison: ${item.poison}</span>`);
-    }
-    if (item.burn) {
-        stats.push(`<span class="stat-effect">Burn: ${item.burn}</span>`);
-    }
-    if (item.slowTargets) {
-        stats.push(`<span class="stat-effect">Slow: ${item.slowTargets} target(s) for ${item.slowDuration}s</span>`);
-    }
-    if (item.freezeTargets) {
-        stats.push(`<span class="stat-effect">Freeze: ${item.freezeTargets} target(s) for ${item.freezeDuration}s</span>`);
-    }
-    if (item.hasteTargets) {
-        stats.push(`<span class="stat-effect">Haste: ${item.hasteTargets} target(s) for ${item.hasteDuration}s</span>`);
+    if (getValue('critMultiplier') == 5) {
+        stats.push(`<div>Quadruple Crit Damage</div>`);
     }
 
-    statsDiv.innerHTML = stats.join('\n');
-    itemElement.appendChild(statsDiv);
+    // Special case for Seashell - display shield based on shieldPerAquatic value
+    if (item.name === "Sea Shell" && getValue('shield')) {
+        const shieldPerAquatic = getValue('shieldPerAquatic');
+        stats.push(`<div class="stat-shield">Shield: ${shieldPerAquatic} per Aquatic item</div>`);
+    } else if (getValue('shield')) {
+        stats.push(`<div class="stat-shield">Shield: ${getValue('shieldAmount')}</div>`);
+    }
+    
+    if (getValue('heal')) {
+        stats.push(`<div class="stat-heal">Heal: ${getValue('healAmount')}</div>`);
+    }
+    
+    if (getValue('poison')) {
+        stats.push(`<div class="stat-effect">Poison: ${getValue('poison')}</div>`);
+    }
+    
+    if (getValue('burn')) {
+        stats.push(`<div class="stat-effect">Burn: ${getValue('burn')}</div>`);
+    }
+    
+    if (getValue('slowTargets')) {
+        stats.push(`<div class="stat-effect">Slow: ${getValue('slowTargets')} target(s) for ${getValue('slowDuration')}s</div>`);
+    }
+    
+    if (getValue('freezeTargets')) {
+        stats.push(`<div class="stat-effect">Freeze: ${getValue('freezeTargets')} target(s) for ${getValue('freezeDuration')}s</div>`);
+    }
+    
+    if (getValue('hasteTargets')) {
+        stats.push(`<div class="stat-effect">Haste: ${getValue('hasteTargets')} target(s) for ${getValue('hasteDuration')}s</div>`);
+    }
+    
+    if (getValue('regenAmount')) {
+        stats.push(`<div class="stat-heal">Regen: ${getValue('regenAmount')} per turn</div>`);
+    }
+
+    // Add passive description if it exists
+    if (typeof item.passive === 'function') {
+        stats.push(`<div class="stat-passive">Passive: ${item.passive()}</div>`);
+    } else if (item.passive) {
+        stats.push(`<div class="stat-passive">Passive: ${item.passive}</div>`);
+    }
+
+    return stats.join('');
 }
 
 function markOccupiedSlots(boardClass, slotIndex, itemSize) {
