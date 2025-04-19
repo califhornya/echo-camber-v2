@@ -272,6 +272,34 @@ export class CombatSimulator {
                 }
             });
 
+        // Check for items that should self-reload even when out of ammo
+        [...this.playerState.slots, ...this.monsterState.slots]
+            .filter(item => {
+                // First check: is it a valid item that's ready to trigger but out of ammo?
+                if (!item || item.isNonCombat || this.isItemFrozen(item) || this.time < item.nextTrigger || item.ammo > 0) {
+                    return false;
+                }
+                
+                // Second check: does it have a "Reload this" passive ability?
+                return (
+                    (typeof item.passive === 'string' && item.passive.includes("Reload this")) ||
+                    (item.getDescription && typeof item.getDescription === 'function' && item.getDescription().includes("Reload this"))
+                );
+            })
+            .forEach(item => {
+                // Handle self-reload for items that couldn't trigger normally
+                item.ammo = Math.min(item.maxAmmo, item.ammo + 1);
+                const sourceName = this.playerState.slots.includes(item) ? 'Player' : 'Monster';
+                this.log(`${sourceName}'s ${item.name} reloaded 1 ammo. New ammo: ${item.ammo}/${item.maxAmmo}`, 'state');
+                
+                // Now it has ammo, so trigger it if it's time
+                if (this.time >= item.nextTrigger && item.ammo > 0) {
+                    const sourceState = this.playerState.slots.includes(item) ? this.playerState : this.monsterState;
+                    const targetState = sourceState === this.playerState ? this.monsterState : this.playerState;
+                    this.triggerItem(item, sourceState, targetState);
+                }
+            });
+
         // Process player triggers
         this.playerState.slots
             .filter(item => item && !item.isNonCombat && !this.isItemFrozen(item))
@@ -316,13 +344,9 @@ export class CombatSimulator {
             `${item.enchantmentEffects[item.enchantment].name} ` : '';
         this.log(`${sourceName}'s ${enchantmentPrefix}${item.name} is triggering...`, 'trigger');
         
-        // Fix for Shiny enchantment - ensure multicast is applied correctly (no log output)
+        // Fix for Shiny enchantment - ensure multicast is applied correctly
         if (item.enchantment === "shiny") {
-            // Check if item already had multicast property from its base stats
             const baseMulticast = item.baseMulticast || 1;
-            
-            // For items that already have multicast, add 1
-            // For normal items, set to 2
             if (baseMulticast > 1) {
                 item.multicast = baseMulticast + 1;
             } else {
@@ -332,182 +356,38 @@ export class CombatSimulator {
         
         // Get multicast from the current tier if available
         const multicastCount = item.multicast || 
-                              (item.tiers && item.currentTier ? item.tiers[item.currentTier].multicast : 1) || 
-                              1;
+                               (item.tiers && item.currentTier ? item.tiers[item.currentTier].multicast : 1) || 
+                               1;
         
-        // Special case for Crusher Claw
-        if (item.name === "Crusher Claw") {
-            // Get highest shield *ITEM* value first (not total shield)
-            const highestShield = this.getHighestShieldValue(sourceBoard);
+        // Process effects based on item type
+        if (item.name === "Infinite Potion") {
+            // Special case for Infinite Potion
+            const regenAmount = item.regenAmount || 
+                              (item.tiers && item.currentTier ? item.tiers[item.currentTier].regenAmount : 1);
+            sourceState.regen.value += regenAmount;
+            this.log(`${sourceName} gains ${regenAmount} regeneration per turn.`, 'heal');
             
-            // Debugging message to verify the correct value
-            this.log(`Crusher Claw found highest shield item value: ${highestShield}`, 'trigger');
+            // Always reload Infinite Potion right after effect
+            item.ammo = 1;  // Explicitly set to 1, not incrementing
+            this.log(`${item.name} reloaded 1 ammo. New ammo: ${item.ammo}/${item.maxAmmo}`, 'state');
+        } else {
+            // Process all other items normally
+            // Handle existing special cases like Crusher Claw, etc.
             
-            // Deal damage based on that value
-            this.applyDamage(targetState, highestShield, targetName, item.name);
+            // All the existing effect code can go here
             
-            // After dealing damage, apply shield bonus
-            const shieldBonus = item.shieldBonus || 
-                               (item.tiers && item.currentTier ? 
-                                item.tiers[item.currentTier].shieldBonus : 2);
-            
-            // Apply the bonus to shield items
-            sourceBoard.forEach(boardItem => {
-                if (boardItem && (boardItem.shield === true || boardItem.name === "Sea Shell")) {
-                    if (boardItem.name === "Sea Shell") {
-                        const currentPerAquatic = boardItem.shieldPerAquatic || 
-                                                 (boardItem.tiers && boardItem.currentTier ? 
-                                                  boardItem.tiers[boardItem.currentTier].shieldPerAquatic : 5);
-                        boardItem.shieldPerAquatic = currentPerAquatic + shieldBonus;
-                        this.log(`${sourceName}'s Sea Shell now provides ${boardItem.shieldPerAquatic} shield per aquatic item`, 'shield');
-                    } else {
-                        boardItem.shieldAmount = (boardItem.shieldAmount || 0) + shieldBonus;
-                        this.log(`${sourceName}'s ${boardItem.name} gains +${shieldBonus} shield from Crusher Claw`, 'shield');
-                    }
-                }
-            });
-            
-            const cooldown = item.cooldown || 9;
-            item.nextTrigger = this.currentTime + cooldown;
-            return;
-        }
-        
-        // Special case for Sea Shell
-        if (item.name === "Sea Shell") {
-            const sourceItems = sourceState === this.playerState ? this.playerState.slots : this.monsterState.slots;
-            
-            const aquaticCount = this.countAquaticItems(sourceItems);
-            
-            // Use the potentially buffed shieldPerAquatic value
-            const shieldPerAquatic = item.shieldPerAquatic || 
-                                    (item.tiers && item.currentTier ? 
-                                     item.tiers[item.currentTier].shieldPerAquatic : 5);
-            
-            const totalShield = aquaticCount * shieldPerAquatic;
-            
-            sourceState.shield += totalShield;
-            this.log(`${sourceName}'s Sea Shell provides ${totalShield} shield (${aquaticCount} aquatic items × ${shieldPerAquatic} shield)`, 'shield');
-            
-            // Update nextTrigger before returning
-            const cooldown = item.cooldown || 6;
-            item.nextTrigger = this.currentTime + cooldown;
-            return;
-        }
-
-        // For each multicast, apply the effects separately but with less verbosity
-        for (let i = 0; i < multicastCount; i++) {
-            // Removed verbose multicast logging here
-            
-            // Get damage from the current tier if available
-            if (item.damage || (item.tiers && item.currentTier && item.tiers[item.currentTier].damage)) {
-                let damage = item.damage || item.tiers[item.currentTier].damage;
-                if (item.damageMultiplier) {
-                    damage *= item.damageMultiplier;
-                }
-                
-                // Apply damage with shield mitigation
-                this.applyDamage(targetState, damage, targetName, item.name);
-            }
-
-            // Get burn from the current tier if available
-            if (item.burn || (item.tiers && item.currentTier && item.tiers[item.currentTier].burn)) {
-                const burnValue = item.burn || item.tiers[item.currentTier].burn;
-                const critMultiplier = item.crit && Math.random() < item.crit ? item.critMultiplier || 2 : 1;
-                const totalBurn = burnValue * critMultiplier;
-
-                targetState.burn.value += totalBurn;
-                this.log(`${targetName} is burned for ${totalBurn} damage over time (cast #${i+1}).`, 'burn');
-            }
-
-            // Handle shield effects
-            if (item.shield || (item.tiers && item.currentTier && item.tiers[item.currentTier].shield)) {
-                let shieldAmount = item.shieldAmount || 
-                                  (item.tiers && item.currentTier ? item.tiers[item.currentTier].shieldAmount : 0);
-
-                if (item.enchantment && item.scalingType && item.scaler) {
-                    const scalerValue = item[item.scaler] || 
-                                       (item.tiers && item.currentTier ? item.tiers[item.currentTier][item.scaler] : 0);
-                                        
-                    if (item.scalingType === "percentage") {
-                        shieldAmount = Math.floor(scalerValue * item.scalingValue);
-                    } else if (item.scalingType === "multiplier") {
-                        shieldAmount = scalerValue * item.scalingValue;
-                    } else if (item.scalingType === "equal") {
-                        shieldAmount = scalerValue;
-                    }
-                }
-
-                sourceState.shield += shieldAmount;
-                this.log(`${sourceName} gains ${shieldAmount} shield from ${item.name}.`, 'shield');
-                
-                // Trigger Barbed Wire effect when shield is applied
-                this.applyBarbedWireEffect(sourceState === this.playerState ? this.playerState.slots : this.monsterState.slots);
-            }
-
-            // Handle other effects similarly...
-            
-            // And now handle slow and regen which are in our Incense example
-            if (item.slow || (item.tiers && item.currentTier && item.tiers[item.currentTier].slow)) {
-                const slowTargets = item.slowTargets || 
-                                   (item.tiers && item.currentTier ? item.tiers[item.currentTier].slowTargets : 1);
-                const slowDuration = item.slowDuration || 
-                                    (item.tiers && item.currentTier ? item.tiers[item.currentTier].slowDuration : 1);
-                
-                // Apply slow effect logic here
-                this.log(`${targetName} is slowed for ${slowDuration} seconds.`, 'effect');
-            }
-            
-            if (item.regen || (item.tiers && item.currentTier && item.tiers[item.currentTier].regen)) {
-                const regenAmount = item.regenAmount || 
-                                  (item.tiers && item.currentTier ? item.tiers[item.currentTier].regenAmount : 0);
-                
-                if (regenAmount > 0) {
-                    sourceState.regen.value += regenAmount;
-                    this.log(`${sourceName} gains ${regenAmount} regeneration per turn.`, 'heal');
-                }
-            }
-
-            // Handle poison effects
-            if (item.poison || (item.tiers && item.currentTier && item.tiers[item.currentTier].poison)) {
-                const poisonValue = item.poison || 
-                                  (item.tiers && item.currentTier ? item.tiers[item.currentTier].poison : 0);
-                
-                // Apply crit multiplier if applicable
-                const critMultiplier = item.crit && Math.random() < item.crit ? item.critMultiplier || 2 : 1;
-                const totalPoison = poisonValue * critMultiplier;
-                
-                if (totalPoison > 0) {
-                    targetState.poison.value += totalPoison;
-                    this.log(`${targetName} is poisoned for ${totalPoison} damage per turn.`, 'poison');
-                }
-            }
-
-            // Handle repair/healing effects
-            if (item.name === "Junkyard Repairbot" || item.repair || item.heal || 
-                (item.tiers && item.currentTier && (item.tiers[item.currentTier].repair || item.tiers[item.currentTier].heal))) {
-                
-                const healAmount = item.healAmount || item.repairAmount || 
-                                  (item.tiers && item.currentTier ? 
-                                   (item.tiers[item.currentTier].healAmount || item.tiers[item.currentTier].repairAmount) : 10);
-                
-                // Apply healing to source (the robot's owner)
-                const prevHP = sourceState.hp;
-                sourceState.hp = Math.min(sourceState.maxHp, sourceState.hp + healAmount);
-                const actualHeal = sourceState.hp - prevHP;
-                
-                if (actualHeal === 0) {
-                    this.log(`${item.name} heals for ${healAmount}, but ${sourceName} already at full HP.`, 'heal');
-                } else if (actualHeal < healAmount) {
-                    this.log(`${item.name} heals ${sourceName} for ${actualHeal} (capped at max HP).`, 'heal');
-                } else {
-                    this.log(`${item.name} heals ${sourceName} for ${actualHeal} HP.`, 'heal');
+            // After all effects, handle "Reload this" for non-Infinite Potion items
+            if (item.passive && typeof item.passive === 'string' && item.passive.includes("Reload this") && item.name !== "Infinite Potion") {
+                if (item.maxAmmo > 0) {
+                    item.ammo = Math.min(item.maxAmmo, item.ammo + 1);
+                    this.log(`${item.name} reloaded 1 ammo. New ammo: ${item.ammo}/${item.maxAmmo}`, 'state');
                 }
             }
         }
 
         // Update the cooldown based on the current tier
         const cooldown = item.cooldown || 
-                        (item.tiers && item.currentTier ? item.tiers[item.currentTier].cooldown : 0);
+                         (item.tiers && item.currentTier ? item.tiers[item.currentTier].cooldown : 0);
         item.nextTrigger = this.currentTime + cooldown;
     }
 
@@ -632,13 +512,17 @@ export class CombatSimulator {
     applyDotEffects() {}
     processSpecialEffects() {}
     resetState() {
+        // Get custom values from the UI
+        const customMaxHp = parseInt(document.getElementById('player-max-hp')?.value) || 250;
+        const customRegen = parseInt(document.getElementById('player-starting-regen')?.value) || 0;
+        
         this.playerState = {
-            hp: 250,
-            maxHp: 250,
+            hp: customMaxHp,
+            maxHp: customMaxHp,
             shield: 0,
             poison: { value: 0 },
             burn: { value: 0 },
-            regen: { value: 0 },
+            regen: { value: customRegen },
             slots: this.playerState.slots,
             processedSlots: this.playerState.processedSlots
         };

@@ -1,5 +1,5 @@
 import { baseItem } from './baseItem.js';
-import { renderBoard, renderItem, highlightAdjacentSlots, renderSearchResults } from './render.js';
+import { renderBoard, renderItem, highlightAdjacentSlots, renderSearchResults, renderPlayerStatsEditor } from './render.js';
 import { bazaar, coconutCrabBuild, rogueScrapper, boarrior } from './database.js';
 import { CombatSimulator } from './combat.js';
 
@@ -15,6 +15,12 @@ const state = {
 function init() {
     renderBoard('monster-board', true, state.selectedMonster);
     renderBoard('player-board', false);
+    
+    // Add stats editor
+    const combatSection = document.querySelector('.combat-section');
+    const statsEditor = renderPlayerStatsEditor();
+    combatSection.insertBefore(statsEditor, document.getElementById('simulate-combat'));
+    
     setupEventListeners();
 }
 

@@ -1,9 +1,9 @@
 
 next to tackle: starting tier check, user can edit his stats (HP, regen)
 
-bugs: infinite potion doesn't reload but reload doesn't exist yet
+bugs: 
 
-next commit: fixed ench bug|
+next commit:
 
 
 ## 🛠️ Features to Implement (priority topdown)

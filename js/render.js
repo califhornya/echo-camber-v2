@@ -816,3 +816,23 @@ export function findLeftmostEmptySlot(itemSize = 1) {
     }
     return -1;
 }
+
+export function renderPlayerStatsEditor() {
+    const statsEditor = document.createElement('div');
+    statsEditor.className = 'player-stats-editor';
+    statsEditor.innerHTML = `
+        <h3>Player Stats</h3>
+        <div class="stats-form">
+            <div class="form-group">
+                <label for="player-max-hp">Max HP:</label>
+                <input type="number" id="player-max-hp" value="250" min="1">
+            </div>
+            <div class="form-group">
+                <label for="player-starting-regen">Starting Regen:</label>
+                <input type="number" id="player-starting-regen" value="0" min="0">
+            </div>
+        </div>
+    `;
+    
+    return statsEditor;
+}

@@ -1073,3 +1073,51 @@ body {
     margin-bottom: 8px;
 }
 
+.player-stats-editor {
+    background-color: #1e2330;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #3a4466;
+}
+
+.player-stats-editor h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #fff;
+    font-weight: bold;
+}
+
+.stats-form {
+    display: flex;
+    gap: 15px;
+}
+
+.stats-form .form-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-form label {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.stats-form input {
+    background-color: #2a3143;
+    border: 1px solid #4a5680;
+    border-radius: 4px;
+    color: #fff;
+    padding: 6px 10px;
+    width: 80px;
+    font-weight: bold;
+}
+
+.stats-form input:focus {
+    outline: none;
+    border-color: #6a76b0;
+    box-shadow: 0 0 0 2px rgba(106, 118, 176, 0.3);
+}
+
