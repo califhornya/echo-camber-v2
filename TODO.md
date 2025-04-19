@@ -1,8 +1,9 @@
 
+next to tackle: starting tier check, user can edit his stats (HP, regen)
 
-next commit: UI changes|items tiers|items refactored|regen logic|introduced mak|monsterdeepclones
+bugs: example katana, edited damage (ok), shiny ench doesn't work, it triggers at t0??? all items do...
 
-
+next commit: fixed ench bug|
 
 
 ## 🛠️ Features to Implement (priority topdown)

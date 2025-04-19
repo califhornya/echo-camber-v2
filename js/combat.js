@@ -1,31 +1,45 @@
 export class CombatSimulator {
-    constructor(playerBoard, monsterBoard) {
-        this.playerBoard = playerBoard;
-        this.monsterBoard = monsterBoard;
+    constructor(playerBoard, monsterData) {
         this.time = 0;
-        this.isRunning = false;
-
-        this.playerState = {
-            hp: 250,
-            maxHp: 250,
-            shield: 0,
-            poison: { value: 0 },
-            burn: { value: 0 },
-            regen: { value: 0 }
-        };
-
-        this.monsterState = {
-            hp: monsterBoard.health || 200,
-            maxHp: monsterBoard.health || 200,
-            shield: 0,
-            poison: { value: 0 },
-            burn: { value: 0 },
-            regen: { value: 0 }
-        };
-
+        this.currentTime = 0;
+        
+        // Initialize log collections
         this.logs = [];
         this.currentTimeLogs = [];
         this.groupedLogs = [];
+        
+        this.playerState = {
+            hp: 100,
+            maxHp: 100,
+            shield: 0,
+            regen: { value: 0 },
+            burn: { value: 0 },
+            poison: { value: 0 },
+            slots: playerBoard.filter(Boolean),
+            processedSlots: new Set()
+        };
+        
+        // Add a direct reference to playerBoard for compatibility
+        this.playerBoard = playerBoard.filter(Boolean);
+        
+        this.monsterState = {
+            hp: monsterData.health,
+            maxHp: monsterData.health,
+            shield: 0,
+            regen: { value: 0 },
+            burn: { value: 0 },
+            poison: { value: 0 },
+            slots: monsterData.slots.filter(Boolean),
+            processedSlots: new Set()
+        };
+        
+        // Add reference to monsterBoard for compatibility
+        this.monsterBoard = monsterData;
+        
+        this.timeMarkers = new Set();
+        this.sandstormStarted = false;
+        this.sandstormDamage = 0;
+        this.isRunning = false;
     }
 
     log(message, type = 'default') {
@@ -88,6 +102,7 @@ export class CombatSimulator {
         this.logs = [];
         this.log('Combat Started!');
         this.time = 0;
+        this.currentTime = 0;
         this.isRunning = true;
 
         this.initializeItems();
@@ -95,6 +110,7 @@ export class CombatSimulator {
         while (this.isRunning) {
             this.processTurn();
             this.time++;
+            this.currentTime++;
 
             if (this.playerState.hp <= 0 && this.monsterState.hp <= 0) {
                 this.log("Both players have been defeated!", "state");
@@ -112,7 +128,7 @@ export class CombatSimulator {
     }
 
     processTurn() {
-        if (this.time >= 30 && !this.sandstormStarted) {
+        if (this.currentTime >= 30 && !this.sandstormStarted) {
             this.sandstormStarted = true;
             this.sandstormDamage = 1;
             this.log("The Sandstorm has started!", "state");
@@ -143,18 +159,52 @@ export class CombatSimulator {
     }
 
     initializeItems() {
-        [...this.playerBoard, ...this.monsterBoard.slots]
-            .filter(item => item)
-            .forEach((item, index) => {
-                item.nextTrigger = item.cooldown;
-                item.nextUnfreeze = null;
-
-                if (item.maxAmmo > 0) {
-                    item.ammo = item.maxAmmo;
+        const player = this.playerState;
+        const monster = this.monsterState;
+        
+        // Clear processed slots to ensure ALL items get initialized
+        player.processedSlots.clear();
+        monster.processedSlots.clear();
+        
+        // Process all player items directly
+        player.slots.forEach((item, index) => {
+            if (item && !player.processedSlots.has(index)) {
+                // For tiered items, ensure properties are copied from the tier
+                if (item.tiers && item.currentTier) {
+                    Object.assign(item, item.tiers[item.currentTier]);
                 }
-
-                item.instanceId = `${item.name}_${index}_${Date.now()}`;
-            });
+                
+                // Set initial trigger time based on cooldown
+                item.nextTrigger = item.cooldown;
+                
+                // Mark all slots this item occupies as processed
+                for (let j = 0; j < item.size; j++) {
+                    player.processedSlots.add(index + j);
+                }
+            }
+        });
+        
+        // Process all monster items directly
+        monster.slots.forEach((item, index) => {
+            if (item && !monster.processedSlots.has(index)) {
+                // For tiered items, ensure properties are copied from the tier
+                if (item.tiers && item.currentTier) {
+                    Object.assign(item, item.tiers[item.currentTier]);
+                }
+                
+                // Set initial trigger time based on cooldown
+                item.nextTrigger = item.cooldown;
+                
+                // Mark all slots this item occupies as processed
+                for (let j = 0; j < item.size; j++) {
+                    monster.processedSlots.add(index + j);
+                }
+            }
+        });
+        
+        this.log("Combat begins! Boards initialized:", 'state');
+        this.logBoardState(player, "Player");
+        this.logBoardState(monster, "Monster");
     }
 
     applySandstormDamage() {
@@ -174,7 +224,29 @@ export class CombatSimulator {
     }
 
     processTriggers() {
-        this.playerBoard
+        // Skip all triggers at time 0 (first turn)
+        if (this.time === 0) {
+            this.log("Combat initializing - no triggers on first turn", 'state');
+            return;
+        }
+
+        // First, scan for any items that don't have a proper nextTrigger set
+        this.playerState.slots.concat(this.monsterState.slots)
+            .filter(item => item && item.nextTrigger === 0)
+            .forEach(item => {
+                // For Sea Shell, set a specific cooldown
+                if (item.name === "Sea Shell") {
+                    item.cooldown = 6;
+                    item.nextTrigger = 6;
+                } else {
+                    // For other items, default to a cooldown of at least 1
+                    item.cooldown = item.cooldown || 1;
+                    item.nextTrigger = item.cooldown;
+                }
+            });
+
+        // Process player triggers
+        this.playerState.slots
             .filter(item => item && !item.isNonCombat && !this.isItemFrozen(item))
             .forEach(item => {
                 if (this.time >= item.nextTrigger) {
@@ -182,7 +254,8 @@ export class CombatSimulator {
                 }
             });
 
-        this.monsterBoard.slots
+        // Process monster triggers
+        this.monsterState.slots
             .filter(item => item && !item.isNonCombat && !this.isItemFrozen(item))
             .forEach(item => {
                 if (this.time >= item.nextTrigger) {
@@ -198,28 +271,77 @@ export class CombatSimulator {
 
         const sourceName = sourceState === this.playerState ? 'Player' : 'Monster';
         const targetName = targetState === this.playerState ? 'Player' : 'Monster';
-        const sourceBoard = sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots;
+        const sourceBoard = sourceState === this.playerState ? this.playerState.slots : this.monsterState.slots;
 
-        // Get ammo from the current tier if available
-        const maxAmmo = item.maxAmmo || (item.tiers && item.currentTier ? item.tiers[item.currentTier].maxAmmo : 0);
-        const ammo = item.ammo !== undefined ? item.ammo : (item.tiers && item.currentTier ? item.tiers[item.currentTier].ammo : undefined);
-
-        if (maxAmmo > 0) {
-            if (ammo <= 0) {
+        // Handle ammo
+        if (item.maxAmmo > 0) {
+            if (item.ammo <= 0) {
                 this.log(`${sourceName}'s ${item.name} cannot trigger (out of ammo).`, 'state');
                 return;
             }
 
-            item.ammo--; // Directly modify the item's ammo count
+            item.ammo--;
             this.log(`${sourceName}'s ${item.name} consumes 1 ammo. Remaining ammo: ${item.ammo}`, 'state');
         }
 
         this.log(`${sourceName}'s ${item.name} is triggering...`, 'trigger');
 
+        // Special case for Crusher Claw
         if (item.name === "Crusher Claw") {
-            const shieldBonus = this.getHighestShieldValue(sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots);
-            const damage = shieldBonus;
-            this.applyDamage(targetState, damage, targetName, item.name);
+            // Get highest shield *ITEM* value first (not total shield)
+            const highestShield = this.getHighestShieldValue(sourceBoard);
+            
+            // Debugging message to verify the correct value
+            this.log(`Crusher Claw found highest shield item value: ${highestShield}`, 'trigger');
+            
+            // Deal damage based on that value
+            this.applyDamage(targetState, highestShield, targetName, item.name);
+            
+            // After dealing damage, apply shield bonus
+            const shieldBonus = item.shieldBonus || 
+                               (item.tiers && item.currentTier ? 
+                                item.tiers[item.currentTier].shieldBonus : 2);
+            
+            // Apply the bonus to shield items
+            sourceBoard.forEach(boardItem => {
+                if (boardItem && (boardItem.shield === true || boardItem.name === "Sea Shell")) {
+                    if (boardItem.name === "Sea Shell") {
+                        const currentPerAquatic = boardItem.shieldPerAquatic || 
+                                                 (boardItem.tiers && boardItem.currentTier ? 
+                                                  boardItem.tiers[boardItem.currentTier].shieldPerAquatic : 5);
+                        boardItem.shieldPerAquatic = currentPerAquatic + shieldBonus;
+                        this.log(`${sourceName}'s Sea Shell now provides ${boardItem.shieldPerAquatic} shield per aquatic item`, 'shield');
+                    } else {
+                        boardItem.shieldAmount = (boardItem.shieldAmount || 0) + shieldBonus;
+                        this.log(`${sourceName}'s ${boardItem.name} gains +${shieldBonus} shield from Crusher Claw`, 'shield');
+                    }
+                }
+            });
+            
+            const cooldown = item.cooldown || 9;
+            item.nextTrigger = this.currentTime + cooldown;
+            return;
+        }
+        
+        // Special case for Sea Shell
+        if (item.name === "Sea Shell") {
+            const sourceItems = sourceState === this.playerState ? this.playerState.slots : this.monsterState.slots;
+            
+            const aquaticCount = this.countAquaticItems(sourceItems);
+            
+            // Use the potentially buffed shieldPerAquatic value
+            const shieldPerAquatic = item.shieldPerAquatic || 
+                                    (item.tiers && item.currentTier ? 
+                                     item.tiers[item.currentTier].shieldPerAquatic : 5);
+            
+            const totalShield = aquaticCount * shieldPerAquatic;
+            
+            sourceState.shield += totalShield;
+            this.log(`${sourceName}'s Sea Shell provides ${totalShield} shield (${aquaticCount} aquatic items × ${shieldPerAquatic} shield)`, 'shield');
+            
+            // Update nextTrigger before returning
+            const cooldown = item.cooldown || 6;
+            item.nextTrigger = this.currentTime + cooldown;
             return;
         }
 
@@ -272,7 +394,7 @@ export class CombatSimulator {
                 this.log(`${sourceName} gains ${shieldAmount} shield from ${item.name}.`, 'shield');
                 
                 // Trigger Barbed Wire effect when shield is applied
-                this.applyBarbedWireEffect(sourceBoard);
+                this.applyBarbedWireEffect(sourceState === this.playerState ? this.playerState.slots : this.monsterState.slots);
             }
 
             // Handle other effects similarly...
@@ -302,7 +424,7 @@ export class CombatSimulator {
         // Update the cooldown based on the current tier
         const cooldown = item.cooldown || 
                         (item.tiers && item.currentTier ? item.tiers[item.currentTier].cooldown : 0);
-        item.nextTrigger = this.time + cooldown;
+        item.nextTrigger = this.currentTime + cooldown;
     }
 
     calculateDamage(item, sourceState, targetState) {
@@ -341,28 +463,49 @@ export class CombatSimulator {
     }
 
     countAquaticItems(items) {
-        return items.filter(item => item && item.type === "Aquatic").length;
+        return items.filter(item => {
+            if (!item) return false;
+            
+            // Check both type and secondaryType fields
+            const isMainTypeAquatic = item.type && item.type.toLowerCase() === "aquatic";
+            const isSecondaryTypeAquatic = item.secondaryType && item.secondaryType.toLowerCase() === "aquatic";
+            
+            // For debugging, log information about aquatic items
+            if (isMainTypeAquatic || isSecondaryTypeAquatic) {
+                console.log(`Found aquatic item: ${item.name} (type: ${item.type}, secondaryType: ${item.secondaryType})`);
+            }
+            
+            return isMainTypeAquatic || isSecondaryTypeAquatic;
+        }).length;
     }
 
     getHighestShieldValue(items) {
+        // Look at shield items, but return their BASE values, not calculated totals
         const shieldValues = items
-            .filter(item => item && item.shield)
+            .filter(item => item && (item.shield === true || item.name === "Sea Shell"))
             .map(item => {
-                const baseShield = item.shieldAmount || 0;
-                const bonusShield = item.bonusShield || 0;
-                return baseShield + bonusShield;
+                // For Sea Shell, use the BASE shieldPerAquatic value, not multiplied by aquatic count
+                if (item.name === "Sea Shell") {
+                    const shieldPerAquatic = item.shieldPerAquatic || 
+                                           (item.tiers && item.currentTier ? 
+                                            item.tiers[item.currentTier].shieldPerAquatic : 5);
+                    return shieldPerAquatic; // Return the base value only
+                }
+                
+                // For regular shield items, get their base shieldAmount
+                return item.shieldAmount || 0;
             });
         
         if (shieldValues.length > 0) {
-            this.log(`Shield values found: ${shieldValues.join(', ')}`, 'trigger');
+            this.log(`Shield base values found: ${shieldValues.join(', ')}`, 'trigger');
         }
         
         return shieldValues.length > 0 ? Math.max(...shieldValues) : 0;
     }
 
     applyFreeze(targetState, item) {
-        const targetItems = targetState === this.playerState ? this.playerBoard : this.monsterBoard.slots;
-        const eligibleItems = targetItems.filter(i => i && (!i.nextUnfreeze || this.time >= i.nextUnfreeze));
+        const targetItems = targetState === this.playerState ? this.playerState.slots : this.monsterState.slots;
+        const eligibleItems = targetItems.filter(i => i && (!i.nextUnfreeze || this.time < i.nextUnfreeze));
         
         if (eligibleItems.length === 0) return;
 
@@ -412,19 +555,23 @@ export class CombatSimulator {
             shield: 0,
             poison: { value: 0 },
             burn: { value: 0 },
-            regen: { value: 0 }
+            regen: { value: 0 },
+            slots: this.playerState.slots,
+            processedSlots: this.playerState.processedSlots
         };
 
         this.monsterState = {
-            hp: this.monsterBoard.health || 200,
-            maxHp: this.monsterBoard.health || 200,
+            hp: this.monsterState.maxHp,
+            maxHp: this.monsterState.maxHp,
             shield: 0,
             poison: { value: 0 },
             burn: { value: 0 },
-            regen: { value: 0 }
+            regen: { value: 0 },
+            slots: this.monsterState.slots,
+            processedSlots: this.monsterState.processedSlots
         };
 
-        [...this.playerBoard, ...this.monsterBoard.slots]
+        [...this.playerState.slots, ...this.monsterState.slots]
             .filter(item => item)
             .forEach(item => {
                 item.nextTrigger = 0;
@@ -436,32 +583,40 @@ export class CombatSimulator {
             });
 
         this.time = 0;
+        this.currentTime = 0;
         this.isRunning = true;
     }
 
     applyShieldBonuses() {
         const allBoards = [
-            { board: this.playerBoard, state: this.playerState },
-            { board: this.monsterBoard.slots, state: this.monsterState }
+            { name: "Player", board: this.playerState.slots, state: this.playerState },
+            { name: "Monster", board: this.monsterState.slots, state: this.monsterState }
         ];
 
-        for (let { board } of allBoards) {
+        for (let { name, board } of allBoards) {
             const crusherClaws = board.filter(item => item && item.name === "Crusher Claw");
             
             if (crusherClaws.length > 0) {
-                board.forEach(item => {
-                    if (item && item.shield) {
-                        const newBonus = crusherClaws.reduce((sum, claw) => sum + (claw.shieldBonus || 0), 0);
-                        item.bonusShield = (item.bonusShield || 0) + newBonus;
-                        this.log(`${item.name} gets additional +${newBonus} shield (total bonus: ${item.bonusShield})`, 'shield');
-                    }
+                // Process each crusher claw
+                crusherClaws.forEach(crusherClaw => {
+                    const shieldBonus = crusherClaw.shieldBonus || 
+                                        (crusherClaw.tiers && crusherClaw.currentTier ? 
+                                         crusherClaw.tiers[crusherClaw.currentTier].shieldBonus : 2);
+                    
+                    // Apply bonus to all shield items on the same board
+                    board.forEach(item => {
+                        if (item && item.shield) {
+                            item.bonusShield = (item.bonusShield || 0) + shieldBonus;
+                            this.log(`${name}'s ${item.name} gets additional +${shieldBonus} shield from Crusher Claw`, 'shield');
+                        }
+                    });
                 });
             }
         }
     }
 
     applyHaste(sourceState, item) {
-        const sourceItems = sourceState === this.playerState ? this.playerBoard : this.monsterBoard.slots;
+        const sourceItems = sourceState === this.playerState ? this.playerState.slots : this.monsterState.slots;
         const eligibleItems = sourceItems.filter(i => i && i.cooldown > 0);
         
         if (eligibleItems.length === 0) return;
@@ -530,64 +685,91 @@ export class CombatSimulator {
             }
         }
     }
+
+    logBoardState(state, stateName) {
+        const itemNames = state.slots
+            .filter(Boolean)
+            .map(item => `${item.name}${item.enchantment ? ` (${item.enchantmentEffects[item.enchantment].name})` : ''}`);
+        
+        if (itemNames.length > 0) {
+            this.log(`${stateName} Board: ${itemNames.join(', ')}`, 'state');
+        } else {
+            this.log(`${stateName} Board: Empty`, 'state');
+        }
+    }
 }
 
 export function applyEnchantment(item, enchantmentName) {
-    if (!item.enchantmentEffects || !item.enchantmentEffects[enchantmentName]) {
-        return false;
-    }
-
+    // If item already has an enchantment, remove it first
     if (item.enchantment) {
         removeEnchantment(item);
     }
-
-    const enchantment = item.enchantmentEffects[enchantmentName];
-    const effect = { ...enchantment.effect };
-
-    if (effect.scalingType && effect.scaler) {
-        const scalerValue = item[effect.scaler] || 0;
-
-        switch (effect.scalingType) {
-            case "percentage":
-                Object.keys(effect).forEach(key => {
-                    if (key !== "scalingType" && key !== "scaler" && key !== "scalingValue") {
-                        effect[key] = Math.floor(scalerValue * (effect.scalingValue || 0));
-                    }
-                });
-                break;
-            case "equal":
-                Object.keys(effect).forEach(key => {
-                    if (key !== "scalingType" && key !== "scaler" && key !== "scalingValue") {
-                        effect[key] = scalerValue;
-                    }
-                });
-                break;
-            case "multiplier":
-                Object.keys(effect).forEach(key => {
-                    if (key !== "scalingType" && key !== "scaler" && key !== "scalingValue") {
-                        effect[key] = scalerValue * (effect.scalingValue || 1);
-                    }
-                });
-                break;
-            default:
-                console.warn(`Unknown scalingType: ${effect.scalingType}`);
-        }
-
-        delete effect.scalingType;
-        delete effect.scaler;
-        delete effect.scalingValue;
-    }
-
-    for (const [key, value] of Object.entries(effect)) {
-        item[key] = value;
-    }
-
+    
+    // Save the new enchantment name
     item.enchantment = enchantmentName;
-
-    console.log('Applied enchantment:', enchantmentName, 'to item:', item.name);
-    console.log('Final item state:', item);
-
-    return true;
+    
+    // If this item has tiered properties, make sure root-level properties exist
+    if (item.tiers && item.currentTier) {
+        // Copy tier properties to root level before applying enchantment effects
+        Object.assign(item, item.tiers[item.currentTier]);
+    }
+    
+    // If the item doesn't have enchantment effects or the requested one, return
+    if (!item.enchantmentEffects || !item.enchantmentEffects[enchantmentName]) {
+        return;
+    }
+    
+    // Apply enchantment effects to the item
+    const effects = item.enchantmentEffects[enchantmentName].effect;
+    
+    // Apply each effect to the item
+    for (const [key, value] of Object.entries(effects)) {
+        // Skip 'scaling' and 'scaler' which are metadata, not actual effects
+        if (key === 'scalingType' || key === 'scaler' || key === 'scalingValue') continue;
+        
+        // Apply the effect value to the item
+        if (key === 'damageMultiplier' && item.damage) {
+            // Don't replace damage, multiply it
+            // We don't modify the original value to avoid compounding multipliers
+        } else if (value !== undefined) {
+            item[key] = value;
+        }
+    }
+    
+    // Handle scaling effects if present
+    if (effects.scalingType && effects.scaler) {
+        // Get the base value for scaling
+        let baseValue = 0;
+        
+        // First check if the scaling value exists on the item's tier
+        if (item.tiers && item.currentTier && item.tiers[item.currentTier][effects.scaler] !== undefined) {
+            baseValue = item.tiers[item.currentTier][effects.scaler];
+        } 
+        // Then check if it exists directly on the item
+        else if (item[effects.scaler] !== undefined) {
+            baseValue = item[effects.scaler];
+        }
+        
+        // Calculate scaled value based on scaling type
+        let scaledValue = 0;
+        
+        if (effects.scalingType === 'equal') {
+            scaledValue = baseValue;
+        } else if (effects.scalingType === 'percentage' && effects.scalingValue) {
+            scaledValue = baseValue * effects.scalingValue;
+        } else if (effects.scalingType === 'multiplier' && effects.scalingValue) {
+            scaledValue = baseValue * effects.scalingValue;
+        }
+        
+        // Apply scaled value to the target property
+        // First identify what property we're scaling to
+        for (const [key, value] of Object.entries(effects)) {
+            if (value === 0 && key !== 'scalingType' && key !== 'scaler' && key !== 'scalingValue') {
+                item[key] = scaledValue;
+                break;
+            }
+        }
+    }
 }
 
 export function removeEnchantment(item) {

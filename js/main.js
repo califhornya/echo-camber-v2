@@ -104,20 +104,31 @@ function setupEventListeners() {
 }
 
 function handleCombatSimulation() {
-    const simulator = new CombatSimulator(state.slots, state.selectedMonster);
-    const results = simulator.simulateFight(1);
+    // Debugging to see if this function is being called
+    console.log("Simulate button clicked, creating simulator...");
     
-    const resultsDiv = document.getElementById('combat-results');
-    resultsDiv.innerHTML = `
-        <div class="combat-summary">
-            <h3>Combat Results vs ${state.selectedMonster.name}</h3>
-            <p>Wins: ${results.wins}</p>
-            <p>Losses: ${results.losses}</p>
-            <p>Win Rate: ${results.winRate.toFixed(1)}%</p>
-        </div>
-    `;
+    try {
+        const simulator = new CombatSimulator(state.slots, state.selectedMonster);
+        console.log("Simulator created, running simulation...");
+        
+        const results = simulator.simulateFight(1);
+        console.log("Simulation complete, displaying results...");
+        
+        const resultsDiv = document.getElementById('combat-results');
+        resultsDiv.innerHTML = `
+            <div class="combat-summary">
+                <h3>Combat Results vs ${state.selectedMonster.name}</h3>
+                <p>Wins: ${results.wins}</p>
+                <p>Losses: ${results.losses}</p>
+                <p>Win Rate: ${results.winRate.toFixed(1)}%</p>
+            </div>
+        `;
 
-    simulator.displayLogs();
+        simulator.displayLogs();
+    } catch (error) {
+        console.error("Error in combat simulation:", error);
+        alert("There was an error running the combat simulation. Check the console for details.");
+    }
 }
 
 function findLeftmostEmptySlot(itemSize = 1) {
