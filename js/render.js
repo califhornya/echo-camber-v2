@@ -48,15 +48,6 @@ export function renderBoard(boardClass, isMonster = false, monsterData = null) {
 }
 
 export function renderItem(item, slotIndex, boardClass = 'player-board') {
-    console.log(`[DEBUG] Rendering item ${item.name} at slot ${slotIndex} with tier ${item.currentTier}`);
-    console.log(`[DEBUG] Item properties:`, JSON.stringify({
-        type: item.type,
-        tier: item.currentTier,
-        cost: item.cost || (item.tiers && item.currentTier ? item.tiers[item.currentTier].cost : 'N/A'),
-        damage: item.damage || (item.tiers && item.currentTier ? item.tiers[item.currentTier].damage : 'N/A'),
-        cooldown: item.cooldown || (item.tiers && item.currentTier ? item.tiers[item.currentTier].cooldown : 'N/A')
-    }, null, 2));
-    
     const slot = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex}"]`);
     if (!slot) return;
     
@@ -290,7 +281,7 @@ function showItemOptionsModal(item, slot, boardClass) {
         }
         
         // Re-render the item to reflect changes
-        renderItem(item, parseInt(slot.dataset.index), boardClass);
+                renderItem(item, parseInt(slot.dataset.index), boardClass);
         modal.remove();
     });
     
@@ -419,7 +410,15 @@ function createEnchantmentOptions(item, slot, boardClass) {
         if (effect.cooldown) description += `Cooldown: ${effect.cooldown}s. `;
         if (effect.crit) description += `+${effect.crit * 100}% Crit Chance. `;
         if (effect.critMultiplier) description += `${effect.critMultiplier}x Crit Damage. `;
-        if (effect.multicast) description += `+${effect.multicast} Multicast. `;
+        if (effect.multicast) {
+            // For Shiny enchantment, it actually adds 1 multicast (turns 1 into 2)
+            if (item.enchantment === "shiny") {
+                description += `+1 multicast`;
+        } else {
+                // For other enchantments with explicit multicast values
+                description += `${effect.multicast}x multicast`;
+            }
+        }
         
         if (effect.scalingType && effect.scaler) {
             description += `Scales with ${effect.scaler}.`;
@@ -616,6 +615,56 @@ function generateItemStatsContent(item) {
         return item[prop];
     };
     
+    // Add enchantment info if item is enchanted
+    if (item.enchantment && item.enchantmentEffects && item.enchantmentEffects[item.enchantment]) {
+        const enchantInfo = item.enchantmentEffects[item.enchantment];
+        stats.push(`<div class="stat-enchant">${enchantInfo.name} Enchantment</div>`);
+        
+        // Add specific effects of the enchantment
+        if (enchantInfo.effect) {
+            const effects = enchantInfo.effect;
+            
+            // List all specific numeric effects 
+            const effectsList = [];
+            
+            if (effects.damage) effectsList.push(`+${effects.damage} damage`);
+            if (effects.burn) effectsList.push(`+${effects.burn} burn`);
+            if (effects.poison) effectsList.push(`+${effects.poison} poison`);
+            if (effects.shieldAmount) effectsList.push(`+${effects.shieldAmount} shield`);
+            if (effects.healAmount) effectsList.push(`+${effects.healAmount} healing`);
+            if (effects.multicast) {
+                // For Shiny enchantment, it actually adds 1 multicast (turns 1 into 2)
+                if (item.enchantment === "shiny") {
+                    effectsList.push(`+1 multicast`);
+                } else {
+                    // For other enchantments with explicit multicast values
+                    effectsList.push(`${effects.multicast}x multicast`);
+                }
+            }
+            if (effects.crit) effectsList.push(`+${(effects.crit * 100).toFixed(0)}% crit chance`);
+            if (effects.critMultiplier) effectsList.push(`+${effects.critMultiplier}x crit multiplier`);
+            if (effects.damageMultiplier) effectsList.push(`${effects.damageMultiplier}x damage`);
+            
+            if (effectsList.length > 0) {
+                stats.push(`<div class="stat-enchant-bonuses">Effect: ${effectsList.join(', ')}</div>`);
+            }
+            
+            // Show scaling information if present
+            if (effects.scalingType && effects.scaler) {
+                let scalingDesc = "";
+                if (effects.scalingType === "percentage") {
+                    scalingDesc = `${effects.scalingValue * 100}% of ${effects.scaler}`;
+                } else if (effects.scalingType === "multiplier") {
+                    scalingDesc = `${effects.scalingValue}x ${effects.scaler}`;
+                } else if (effects.scalingType === "equal") {
+                    scalingDesc = `equal to ${effects.scaler}`;
+                }
+                
+                stats.push(`<div class="stat-enchant-scaling">Scaling: ${scalingDesc}</div>`);
+            }
+        }
+    }
+    
     // Add cost information
     const cost = getValue('cost');
     if (cost) {
@@ -626,8 +675,10 @@ function generateItemStatsContent(item) {
         let damage = getValue('damage');
         if (getValue('damageMultiplier')) {
             damage *= getValue('damageMultiplier');
+            stats.push(`<div class="stat-damage">Damage: ${damage} (${getValue('damageMultiplier')}x multiplier)</div>`);
+        } else {
+            stats.push(`<div class="stat-damage">Damage: ${damage}</div>`);
         }
-        stats.push(`<div class="stat-damage">Damage: ${damage}</div>`);
     }
     
     if (getValue('cooldown')) {
@@ -639,17 +690,18 @@ function generateItemStatsContent(item) {
     }
     
     if (getValue('crit')) {
-        stats.push(`<div>Crit Chance: ${getValue('crit') * 100}%</div>`);
+        stats.push(`<div>Crit Chance: ${(getValue('crit') * 100).toFixed(0)}%</div>`);
     }
     
-    if (getValue('critMultiplier') == 3) {
-        stats.push(`<div>Double Crit Damage</div>`);
-    }
-    if (getValue('critMultiplier') == 4) {
-        stats.push(`<div>Triple Crit Damage</div>`);
-    }
-    if (getValue('critMultiplier') == 5) {
-        stats.push(`<div>Quadruple Crit Damage</div>`);
+    if (getValue('critMultiplier')) {
+        let critText = "";
+        if (getValue('critMultiplier') == 2) critText = "Double";
+        else if (getValue('critMultiplier') == 3) critText = "Triple";
+        else if (getValue('critMultiplier') == 4) critText = "Quadruple";
+        else if (getValue('critMultiplier') == 5) critText = "Quintuple";
+        else critText = `${getValue('critMultiplier')}x`;
+        
+        stats.push(`<div>${critText} Crit Damage</div>`);
     }
 
     // Special case for Seashell - display shield based on shieldPerAquatic value
@@ -698,18 +750,6 @@ function generateItemStatsContent(item) {
     return stats.join('');
 }
 
-function markOccupiedSlots(boardClass, slotIndex, itemSize) {
-    for (let i = 0; i < itemSize; i++) {
-        const slotToMark = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex + i}"]`);
-        if (slotToMark) {
-            slotToMark.classList.add('occupied');
-            if (i > 0) {
-                slotToMark.classList.add('continuation');
-            }
-        }
-    }
-}
-
 export function highlightAdjacentSlots(slotIndex) {
     document.querySelectorAll('.slot.adjacent-highlight')
         .forEach(slot => slot.classList.remove('adjacent-highlight'));
@@ -719,6 +759,18 @@ export function highlightAdjacentSlots(slotIndex) {
     
     if (leftSlot) leftSlot.classList.add('adjacent-highlight');
     if (rightSlot) rightSlot.classList.add('adjacent-highlight');
+}
+
+export function markOccupiedSlots(boardClass, slotIndex, itemSize) {
+    for (let i = 0; i < itemSize; i++) {
+        const slotToMark = document.querySelector(`.${boardClass} .slot[data-index="${slotIndex + i}"]`);
+        if (slotToMark) {
+            slotToMark.classList.add('occupied');
+            if (i > 0) {
+                slotToMark.classList.add('continuation');
+            }
+        }
+    }
 }
 
 export function renderSearchResults(items, onSelect) {

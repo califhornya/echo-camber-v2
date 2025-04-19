@@ -1,7 +1,7 @@
 
 next to tackle: starting tier check, user can edit his stats (HP, regen)
 
-bugs: example katana, edited damage (ok), shiny ench doesn't work, it triggers at t0??? all items do...
+bugs: infinite potion doesn't reload but reload doesn't exist yet
 
 next commit: fixed ench bug|
 

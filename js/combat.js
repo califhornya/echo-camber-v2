@@ -128,6 +128,15 @@ export class CombatSimulator {
     }
 
     processTurn() {
+        // Apply any pending damage increases to Barbed Wire
+        [...this.playerState.slots, ...this.monsterState.slots]
+            .filter(item => item && item.name === "Barbed Wire" && item._pendingDamageIncrease)
+            .forEach(item => {
+                item.damage += item._pendingDamageIncrease;
+                this.log(`Barbed Wire's damage increased by ${item._pendingDamageIncrease}. New damage: ${item.damage}`, 'trigger');
+                item._pendingDamageIncrease = 0;
+            });
+
         if (this.currentTime >= 30 && !this.sandstormStarted) {
             this.sandstormStarted = true;
             this.sandstormDamage = 1;
@@ -169,9 +178,18 @@ export class CombatSimulator {
         // Process all player items directly
         player.slots.forEach((item, index) => {
             if (item && !player.processedSlots.has(index)) {
+                // Save enchantment state before applying tier properties
+                const hasEnchantment = item.enchantment;
+                const enchantmentName = item.enchantment;
+                
                 // For tiered items, ensure properties are copied from the tier
                 if (item.tiers && item.currentTier) {
                     Object.assign(item, item.tiers[item.currentTier]);
+                }
+                
+                // Re-apply enchantment if it was present
+                if (hasEnchantment) {
+                    applyEnchantment(item, enchantmentName);
                 }
                 
                 // Set initial trigger time based on cooldown
@@ -184,12 +202,21 @@ export class CombatSimulator {
             }
         });
         
-        // Process all monster items directly
+        // Similar process for monster items
         monster.slots.forEach((item, index) => {
             if (item && !monster.processedSlots.has(index)) {
+                // Save enchantment state before applying tier properties
+                const hasEnchantment = item.enchantment;
+                const enchantmentName = item.enchantment;
+                
                 // For tiered items, ensure properties are copied from the tier
                 if (item.tiers && item.currentTier) {
                     Object.assign(item, item.tiers[item.currentTier]);
+                }
+                
+                // Re-apply enchantment if it was present
+                if (hasEnchantment) {
+                    applyEnchantment(item, enchantmentName);
                 }
                 
                 // Set initial trigger time based on cooldown
@@ -284,8 +311,30 @@ export class CombatSimulator {
             this.log(`${sourceName}'s ${item.name} consumes 1 ammo. Remaining ammo: ${item.ammo}`, 'state');
         }
 
-        this.log(`${sourceName}'s ${item.name} is triggering...`, 'trigger');
-
+        // Include enchantment in the log message
+        const enchantmentPrefix = item.enchantment ? 
+            `${item.enchantmentEffects[item.enchantment].name} ` : '';
+        this.log(`${sourceName}'s ${enchantmentPrefix}${item.name} is triggering...`, 'trigger');
+        
+        // Fix for Shiny enchantment - ensure multicast is applied correctly (no log output)
+        if (item.enchantment === "shiny") {
+            // Check if item already had multicast property from its base stats
+            const baseMulticast = item.baseMulticast || 1;
+            
+            // For items that already have multicast, add 1
+            // For normal items, set to 2
+            if (baseMulticast > 1) {
+                item.multicast = baseMulticast + 1;
+            } else {
+                item.multicast = 2;
+            }
+        }
+        
+        // Get multicast from the current tier if available
+        const multicastCount = item.multicast || 
+                              (item.tiers && item.currentTier ? item.tiers[item.currentTier].multicast : 1) || 
+                              1;
+        
         // Special case for Crusher Claw
         if (item.name === "Crusher Claw") {
             // Get highest shield *ITEM* value first (not total shield)
@@ -345,12 +394,10 @@ export class CombatSimulator {
             return;
         }
 
-        // Get multicast from the current tier if available
-        const multicastCount = item.multicast || 
-                              (item.tiers && item.currentTier ? item.tiers[item.currentTier].multicast : 1) || 
-                              1;
-
+        // For each multicast, apply the effects separately but with less verbosity
         for (let i = 0; i < multicastCount; i++) {
+            // Removed verbose multicast logging here
+            
             // Get damage from the current tier if available
             if (item.damage || (item.tiers && item.currentTier && item.tiers[item.currentTier].damage)) {
                 let damage = item.damage || item.tiers[item.currentTier].damage;
@@ -369,7 +416,7 @@ export class CombatSimulator {
                 const totalBurn = burnValue * critMultiplier;
 
                 targetState.burn.value += totalBurn;
-                this.log(`${targetName} is burned for ${totalBurn} damage over time.`, 'burn');
+                this.log(`${targetName} is burned for ${totalBurn} damage over time (cast #${i+1}).`, 'burn');
             }
 
             // Handle shield effects
@@ -417,6 +464,43 @@ export class CombatSimulator {
                 if (regenAmount > 0) {
                     sourceState.regen.value += regenAmount;
                     this.log(`${sourceName} gains ${regenAmount} regeneration per turn.`, 'heal');
+                }
+            }
+
+            // Handle poison effects
+            if (item.poison || (item.tiers && item.currentTier && item.tiers[item.currentTier].poison)) {
+                const poisonValue = item.poison || 
+                                  (item.tiers && item.currentTier ? item.tiers[item.currentTier].poison : 0);
+                
+                // Apply crit multiplier if applicable
+                const critMultiplier = item.crit && Math.random() < item.crit ? item.critMultiplier || 2 : 1;
+                const totalPoison = poisonValue * critMultiplier;
+                
+                if (totalPoison > 0) {
+                    targetState.poison.value += totalPoison;
+                    this.log(`${targetName} is poisoned for ${totalPoison} damage per turn.`, 'poison');
+                }
+            }
+
+            // Handle repair/healing effects
+            if (item.name === "Junkyard Repairbot" || item.repair || item.heal || 
+                (item.tiers && item.currentTier && (item.tiers[item.currentTier].repair || item.tiers[item.currentTier].heal))) {
+                
+                const healAmount = item.healAmount || item.repairAmount || 
+                                  (item.tiers && item.currentTier ? 
+                                   (item.tiers[item.currentTier].healAmount || item.tiers[item.currentTier].repairAmount) : 10);
+                
+                // Apply healing to source (the robot's owner)
+                const prevHP = sourceState.hp;
+                sourceState.hp = Math.min(sourceState.maxHp, sourceState.hp + healAmount);
+                const actualHeal = sourceState.hp - prevHP;
+                
+                if (actualHeal === 0) {
+                    this.log(`${item.name} heals for ${healAmount}, but ${sourceName} already at full HP.`, 'heal');
+                } else if (actualHeal < healAmount) {
+                    this.log(`${item.name} heals ${sourceName} for ${actualHeal} (capped at max HP).`, 'heal');
+                } else {
+                    this.log(`${item.name} heals ${sourceName} for ${actualHeal} HP.`, 'heal');
                 }
             }
         }
@@ -480,21 +564,20 @@ export class CombatSimulator {
     }
 
     getHighestShieldValue(items) {
-        // Look at shield items, but return their BASE values, not calculated totals
+        // Look only at shield items' base values
         const shieldValues = items
-            .filter(item => item && (item.shield === true || item.name === "Sea Shell"))
-            .map(item => {
-                // For Sea Shell, use the BASE shieldPerAquatic value, not multiplied by aquatic count
-                if (item.name === "Sea Shell") {
-                    const shieldPerAquatic = item.shieldPerAquatic || 
-                                           (item.tiers && item.currentTier ? 
-                                            item.tiers[item.currentTier].shieldPerAquatic : 5);
-                    return shieldPerAquatic; // Return the base value only
-                }
-                
-                // For regular shield items, get their base shieldAmount
-                return item.shieldAmount || 0;
-            });
+            .filter(item => item && item.shield === true)
+            .map(item => item.shieldAmount || 0);
+        
+        // Special case for Sea Shell - add it separately since it's not a standard shield item
+        const seaShell = items.find(item => item && item.name === "Sea Shell");
+        if (seaShell) {
+            // For Sea Shell, use the current tier's base shieldPerAquatic value
+            const baseValue = seaShell.shieldPerAquatic || 
+                             (seaShell.tiers && seaShell.currentTier ? 
+                              seaShell.tiers[seaShell.currentTier].shieldPerAquatic : 5);
+            shieldValues.push(baseValue);
+        }
         
         if (shieldValues.length > 0) {
             this.log(`Shield base values found: ${shieldValues.join(', ')}`, 'trigger');
@@ -571,14 +654,38 @@ export class CombatSimulator {
             processedSlots: this.monsterState.processedSlots
         };
 
+        // Fully reset all items to their original state
         [...this.playerState.slots, ...this.monsterState.slots]
             .filter(item => item)
             .forEach(item => {
+                // Reset basic trigger properties
                 item.nextTrigger = 0;
                 item.nextUnfreeze = null;
-
+                
+                // Reset ammo
                 if (item.maxAmmo !== undefined) {
                     item.ammo = item.maxAmmo;
+                }
+                
+                // Special case for Sea Shell - reset shieldPerAquatic
+                if (item.name === "Sea Shell") {
+                    if (item.tiers && item.currentTier) {
+                        item.shieldPerAquatic = item.tiers[item.currentTier].shieldPerAquatic;
+                    } else {
+                        item.shieldPerAquatic = 5; // Default value if no tier info
+                    }
+                }
+                
+                // Special case for Barbed Wire - reset damage
+                if (item.name === "Barbed Wire") {
+                    if (item.tiers && item.currentTier) {
+                        item.damage = item.tiers[item.currentTier].damage;
+                    }
+                }
+                
+                // For all items, re-apply tier properties to ensure clean state
+                if (item.tiers && item.currentTier) {
+                    Object.assign(item, item.tiers[item.currentTier]);
                 }
             });
 
@@ -639,14 +746,18 @@ export class CombatSimulator {
         
         if (barbedWires.length > 0) {
             barbedWires.forEach(barbedWire => {
-                barbedWire.damage += 10;
-                this.log(`Barbed Wire's damage increased by 10. New damage: ${barbedWire.damage}`, 'trigger');
+                // Instead of immediately increasing damage, schedule the increase for next turn
+                barbedWire._pendingDamageIncrease = (barbedWire._pendingDamageIncrease || 0) + 10;
+                this.log(`Barbed Wire's damage will increase by 10 next turn. Current damage: ${barbedWire.damage}`, 'trigger');
             });
         }
     }
 
     // New method to apply damage with shield mitigation
     applyDamage(targetState, damage, targetName, itemName) {
+        // Log the total damage first
+        this.log(`${itemName} deals ${damage} damage to ${targetName}.`, 'damage');
+        
         // Check how much damage can be absorbed by the shield
         const shieldAbsorbed = Math.min(damage, targetState.shield);
         
@@ -719,6 +830,13 @@ export function applyEnchantment(item, enchantmentName) {
         return;
     }
     
+    // Save the original multicast value if it exists
+    if (item.multicast !== undefined && item.baseMulticast === undefined) {
+        item.baseMulticast = item.multicast;
+    } else if (item.baseMulticast === undefined) {
+        item.baseMulticast = 1; // Default value if none exists
+    }
+    
     // Apply enchantment effects to the item
     const effects = item.enchantmentEffects[enchantmentName].effect;
     
@@ -731,11 +849,19 @@ export function applyEnchantment(item, enchantmentName) {
         if (key === 'damageMultiplier' && item.damage) {
             // Don't replace damage, multiply it
             // We don't modify the original value to avoid compounding multipliers
+        } else if (key === 'multicast') {
+            // Special handling for multicast to ensure it's applied correctly
+            item.multicast = value;
+            console.log(`Applied multicast ${value} to ${item.name} (Shiny enchantment)`);
         } else if (value !== undefined) {
             item[key] = value;
         }
     }
     
+    // Log the resulting item state for debugging
+    console.log(`After applying ${enchantmentName} enchantment:`, 
+                {name: item.name, multicast: item.multicast, baseMulticast: item.baseMulticast});
+
     // Handle scaling effects if present
     if (effects.scalingType && effects.scaler) {
         // Get the base value for scaling

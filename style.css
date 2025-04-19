@@ -1054,3 +1054,22 @@ body {
     border-top: 5px solid rgba(0, 0, 0, 0.9);
 }
 
+.stat-enchant {
+    color: #ffc6d9; /* Light pink matching the shiny enchantment */
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.stat-enchant-bonuses {
+    color: #ffc6d9;
+    margin-left: 8px;
+    margin-bottom: 2px;
+}
+
+.stat-enchant-scaling {
+    color: #ffc6d9;
+    font-style: italic;
+    margin-left: 8px;
+    margin-bottom: 8px;
+}
+

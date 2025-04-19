@@ -147,23 +147,6 @@ function findLeftmostEmptySlot(itemSize = 1) {
     return -1;
 }
 
-function handleOrientationChange() {
-    const isLandscape = window.matchMedia("(orientation: landscape)").matches;
-    const rotateMessage = document.querySelector('.rotate-message');
-    const container = document.querySelector('.container');
-
-    if (isLandscape) {
-        rotateMessage.style.display = 'none';
-        container.style.display = 'flex';
-    } else {
-        rotateMessage.style.display = 'flex';
-        container.style.display = 'none';
-    }
-}
-
-window.addEventListener('orientationchange', handleOrientationChange);
-window.addEventListener('load', handleOrientationChange);
-
 function changeMonster(monsterKey) {
     switch(monsterKey) {
         case 'coconutCrab':
