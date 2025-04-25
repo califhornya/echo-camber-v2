@@ -220,9 +220,28 @@ body {
     color: #fff; /* White text */
 }
 
+.log-group {
+    border-bottom: 1px solid #444;
+    padding: 8px;
+    margin-bottom: 4px;
+}
+
+.log-timestamp {
+    font-weight: bold;
+    color: #888;
+    margin-bottom: 4px;
+}
+
 .log-entry {
     margin: 2px 0;
-    padding: 2px 5px;
+    padding: 2px 4px;
+}
+
+.log-status {
+    margin-top: 4px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
 }
 
 .log-damage { color: #ff4444; }
