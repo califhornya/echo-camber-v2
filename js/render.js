@@ -674,9 +674,14 @@ function generateItemStatsContent(item) {
     
     if (getValue('damage')) {
         let damage = getValue('damage');
-        if (getValue('damageMultiplier')) {
-            damage *= getValue('damageMultiplier');
-            stats.push(`<div class="stat-damage">Damage: ${damage} (${getValue('damageMultiplier')}x multiplier)</div>`);
+        // Check for enchantment damage multiplier
+        if (item.enchantment && 
+            item.enchantmentEffects && 
+            item.enchantmentEffects[item.enchantment] && 
+            item.enchantmentEffects[item.enchantment].effect.damageMultiplier) {
+            const multiplier = item.enchantmentEffects[item.enchantment].effect.damageMultiplier;
+            damage *= multiplier;
+            stats.push(`<div class="stat-damage">Damage: ${damage} (${multiplier}x from Obsidian)</div>`);
         } else {
             stats.push(`<div class="stat-damage">Damage: ${damage}</div>`);
         }

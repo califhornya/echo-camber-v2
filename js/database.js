@@ -87,11 +87,15 @@ const bazaar = {
         if (!query) return this.items;
         
         const lowerQuery = query.toLowerCase();
-        return this.items.filter(item => 
-            item.name.toLowerCase().includes(lowerQuery) || 
-            item.type.toLowerCase().includes(lowerQuery) ||
-            item.tier.toLowerCase().includes(lowerQuery)
-        );
+        return this.items.filter(item => {
+            // Add more robust search criteria
+            return (
+                item.name.toLowerCase().includes(lowerQuery) || 
+                (item.type && item.type.toLowerCase().includes(lowerQuery)) ||
+                (item.tier && item.tier.toLowerCase().includes(lowerQuery)) ||
+                (item.currentTier && item.currentTier.toLowerCase().includes(lowerQuery))
+            );
+        });
     }
 };
 

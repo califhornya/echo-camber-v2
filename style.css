@@ -1140,3 +1140,48 @@ body {
     box-shadow: 0 0 0 2px rgba(106, 118, 176, 0.3);
 }
 
+.simulation-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+#quick-test, #full-analysis {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#quick-test {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#full-analysis {
+    background-color: #2196F3;
+    color: white;
+}
+
+#quick-test:hover, #full-analysis:hover {
+    opacity: 0.9;
+}
+
+.item-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.item-stats-table th,
+.item-stats-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.item-stats-table th {
+    background-color: #f5f5f5;
+}
+

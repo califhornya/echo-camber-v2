@@ -439,10 +439,29 @@ export class CombatSimulator {
                 for (let i = 0; i < multicastCount; i++) {
                     if (item.damage || (item.tiers && item.currentTier && item.tiers[item.currentTier].damage)) {
                         let damage = item.damage || item.tiers[item.currentTier].damage;
-                        if (item.damageMultiplier) {
-                            damage *= item.damageMultiplier;
+                        console.log(`[DEBUG] ${item.name} base damage: ${damage}`);
+                        
+                        // Log enchantment details
+                        if (item.enchantment) {
+                            console.log(`[DEBUG] ${item.name} has ${item.enchantment} enchantment`);
+                            console.log(`[DEBUG] Enchantment effects:`, item.enchantmentEffects[item.enchantment]);
                         }
                         
+                        // Log damage multiplier if exists
+                        if (item.damageMultiplier) {
+                            console.log(`[DEBUG] ${item.name} has stored multiplier: ${item.damageMultiplier}`);
+                        }
+                        
+                        if (item.enchantment && 
+                            item.enchantmentEffects && 
+                            item.enchantmentEffects[item.enchantment] && 
+                            item.enchantmentEffects[item.enchantment].effect.damageMultiplier) {
+                            const multiplier = item.enchantmentEffects[item.enchantment].effect.damageMultiplier;
+                            console.log(`[DEBUG] Applying enchantment multiplier: ${multiplier}`);
+                            damage *= multiplier;
+                        }
+                        
+                        console.log(`[DEBUG] Final damage to be applied: ${damage}`);
                         this.applyDamage(targetState, damage, targetName, item.name);
                     }
 
@@ -685,6 +704,12 @@ export class CombatSimulator {
         [...this.playerState.slots, ...this.monsterState.slots]
             .filter(item => item)
             .forEach(item => {
+                // Store ALL important state
+                const currentEnchantment = item.enchantment;
+                const currentDamageMultiplier = item.damageMultiplier;
+                const currentTier = item.currentTier || item.tier; // Store the correct tier
+
+                // Reset basic properties
                 item.nextTrigger = 0;
                 item._nextUnfreezeTick = null;
                 
@@ -692,6 +717,7 @@ export class CombatSimulator {
                     item.ammo = item.maxAmmo;
                 }
                 
+                // Special item handling
                 if (item.name === "Sea Shell") {
                     if (item.tiers && item.currentTier) {
                         item.shieldPerAquatic = item.tiers[item.currentTier].shieldPerAquatic;
@@ -706,8 +732,17 @@ export class CombatSimulator {
                     }
                 }
                 
-                if (item.tiers && item.currentTier) {
-                    Object.assign(item, item.tiers[item.currentTier]);
+                // Apply tier properties
+                if (item.tiers && currentTier) {
+                    Object.assign(item, item.tiers[currentTier]);
+                    item.currentTier = currentTier; // Ensure tier is preserved
+                    item.tier = currentTier; // Sync both tier properties
+                }
+
+                // Restore enchantment state
+                if (currentEnchantment) {
+                    item.enchantment = currentEnchantment;
+                    item.damageMultiplier = currentDamageMultiplier;
                 }
             });
 
@@ -851,6 +886,9 @@ export function applyEnchantment(item, enchantmentName) {
         if (key === 'scalingType' || key === 'scaler' || key === 'scalingValue') continue;
         
         if (key === 'damageMultiplier' && item.damage) {
+            // Store the multiplier instead of applying it directly
+            item.damageMultiplier = value;
+            console.log(`Stored damage multiplier ${value} for ${item.name}`);
         } else if (key === 'multicast') {
             item.multicast = value;
             console.log(`Applied multicast ${value} to ${item.name} (Shiny enchantment)`);
@@ -939,5 +977,32 @@ export function removeEnchantment(item) {
     console.log('Final item state:', item);
     
     return true;
+}
+
+function handleFullAnalysis() {
+    console.log("Running full analysis...");
+    const simulator = new CombatSimulator(state.slots, state.selectedMonster, state.playerStats);
+    
+    let wins = 0;
+    const itemStats = {};
+    
+    // Initialize item stats tracking
+    [...state.slots, ...state.selectedMonster.slots]
+        .filter(item => item)
+        .forEach(item => {
+            itemStats[item.name] = { triggers: 0 };
+        });
+
+    // Run 10 individual simulations
+    for (let i = 0; i < 10; i++) {
+        const result = simulator.simulateFight(1);
+        if (result.wins > 0) wins++;
+    }
+
+    displayFullAnalysisResults({
+        wins,
+        totalFights: 10,
+        itemStats
+    });
 }
 

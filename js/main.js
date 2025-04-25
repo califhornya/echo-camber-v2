@@ -81,9 +81,14 @@ function handleItemSelect(item) {
 function setupEventListeners() {
     const playerBoard = document.querySelector('.player-board');
     const searchInput = document.getElementById('search-input');
-    const simulateButton = document.getElementById('simulate-combat');
     
-    simulateButton.addEventListener('click', handleCombatSimulation);
+    // Remove this line since we don't have simulateButton anymore
+    // const simulateButton = document.getElementById('simulate-combat');
+    // simulateButton.addEventListener('click', handleCombatSimulation);
+    
+    // Add the new simulation button listeners
+    document.getElementById('quick-test').addEventListener('click', handleQuickTest);
+    document.getElementById('full-analysis').addEventListener('click', handleFullAnalysis);
     
     playerBoard.addEventListener('mouseover', (e) => {
         const slot = e.target.closest('.slot');
@@ -98,6 +103,7 @@ function setupEventListeners() {
             .forEach(slot => slot.classList.remove('adjacent-highlight'));
     });
     
+    // Make sure these search-related event listeners are properly set up
     searchInput.addEventListener('input', handleSearch);
     searchInput.addEventListener('focus', handleSearch);
 
@@ -140,6 +146,125 @@ function handleCombatSimulation() {
         console.error("Error in combat simulation:", error);
         alert("There was an error running the combat simulation. Check the console for details.");
     }
+}
+
+function handleQuickTest() {
+    console.log("Running quick test...");
+    const simulator = new CombatSimulator(state.slots, state.selectedMonster, state.playerStats);
+    const results = simulator.simulateFight(1);
+    displayQuickTestResults(results, simulator);
+}
+
+function handleFullAnalysis() {
+    console.log("Running full analysis...");
+    
+    let wins = 0;
+    const itemStats = {};
+    
+    // Initialize item stats tracking
+    [...state.slots, ...state.selectedMonster.slots]
+        .filter(item => item)
+        .forEach(item => {
+            const itemKey = item.enchantment ? 
+                `${item.enchantmentEffects[item.enchantment].name} ${item.name}` : 
+                item.name;
+            itemStats[itemKey] = { triggers: 0 };
+        });
+
+    // Run 10 simulations exactly like quick tests
+    for (let i = 0; i < 10; i++) {
+        console.log(`Running simulation ${i + 1}/10`);
+        
+        // Create a new simulator for each run, just like quick test does
+        const simulator = new CombatSimulator(state.slots, state.selectedMonster, state.playerStats);
+        const results = simulator.simulateFight(1);
+        
+        // Count the win
+        if (results.wins > 0) {
+            wins++;
+            console.log(`Simulation ${i + 1}: Victory`);
+        } else {
+            console.log(`Simulation ${i + 1}: Defeat`);
+        }
+        
+        // Count triggers from this simulation
+        simulator.groupedLogs.forEach(timeGroup => {
+            timeGroup.actions.forEach(log => {
+                if (log.type === 'trigger') {
+                    const match = log.message.match(/.*'s (.*) is triggering/);
+                    if (match && match[1]) {
+                        const fullItemName = match[1].trim();
+                        if (itemStats[fullItemName]) {
+                            itemStats[fullItemName].triggers++;
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    console.log("Analysis complete:", {
+        wins,
+        itemStats
+    });
+
+    displayFullAnalysisResults({
+        wins,
+        totalFights: 10,
+        itemStats
+    });
+}
+
+function displayQuickTestResults(results, simulator) {
+    const resultsDiv = document.getElementById('combat-results');
+    resultsDiv.innerHTML = `
+        <div class="combat-summary">
+            <h3>Quick Test Results vs ${state.selectedMonster.name}</h3>
+            <p>Outcome: ${results.wins > 0 ? 'Victory!' : 'Defeat'}</p>
+        </div>
+    `;
+    simulator.displayLogs();
+}
+
+function displayFullAnalysisResults(results) {
+    const resultsDiv = document.getElementById('combat-results');
+    const winRate = (results.wins / results.totalFights * 100).toFixed(1);
+    
+    let itemStatsHtml = '';
+    for (const [itemName, stats] of Object.entries(results.itemStats)) {
+        const avgTriggers = (stats.triggers / results.totalFights).toFixed(1);
+        itemStatsHtml += `
+            <tr>
+                <td>${itemName}</td>
+                <td>${stats.triggers}</td>
+                <td>${avgTriggers}</td>
+            </tr>
+        `;
+    }
+
+    resultsDiv.innerHTML = `
+        <div class="combat-summary">
+            <h3>Full Analysis Results vs ${state.selectedMonster.name}</h3>
+            <p>Win Rate: ${winRate}% (${results.wins}/${results.totalFights} fights won)</p>
+            
+            <h4>Item Performance:</h4>
+            <table class="item-stats-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Total Triggers</th>
+                        <th>Avg per Fight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemStatsHtml}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    // Clear combat log for full analysis
+    document.getElementById('combat-log').innerHTML = '';
 }
 
 function findLeftmostEmptySlot(itemSize = 1) {
