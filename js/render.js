@@ -1,5 +1,6 @@
 import { bazaar, coconutCrabBuild, rogueScrapper } from './database.js';
 import { applyEnchantment, removeEnchantment } from './combat.js';
+import { updatePlayerStats } from './main.js';
 
 const ENCHANTMENT_TYPES = ['heavy', 'icy', 'turbo', 'shielded', 'restorative', 
     'toxic', 'fiery', 'shiny', 'deadly', 'radiant', 'obsidian'];
@@ -818,21 +819,75 @@ export function findLeftmostEmptySlot(itemSize = 1) {
 }
 
 export function renderPlayerStatsEditor() {
-    const statsEditor = document.createElement('div');
-    statsEditor.className = 'player-stats-editor';
-    statsEditor.innerHTML = `
-        <h3>Player Stats</h3>
-        <div class="stats-form">
-            <div class="form-group">
-                <label for="player-max-hp">Max HP:</label>
-                <input type="number" id="player-max-hp" value="250" min="1">
-            </div>
-            <div class="form-group">
-                <label for="player-starting-regen">Starting Regen:</label>
-                <input type="number" id="player-starting-regen" value="0" min="0">
-            </div>
-        </div>
-    `;
+    const container = document.createElement('div');
+    container.className = 'player-stats-editor';
     
-    return statsEditor;
+    const title = document.createElement('h3');
+    title.textContent = 'Player Stats';
+    
+    const form = document.createElement('form');
+    form.className = 'stats-form';
+    form.onsubmit = (e) => e.preventDefault();
+    
+    // Health group
+    const healthGroup = document.createElement('div');
+    healthGroup.className = 'form-group';
+    const healthLabel = document.createElement('label');
+    healthLabel.textContent = 'Health:';
+    const healthInput = document.createElement('input');
+    healthInput.type = 'number';
+    healthInput.min = '1';
+    healthInput.value = '100';
+    healthInput.required = true;
+    
+    // Regen group
+    const regenGroup = document.createElement('div');
+    regenGroup.className = 'form-group';
+    const regenLabel = document.createElement('label');
+    regenLabel.textContent = 'Regeneration:';
+    const regenInput = document.createElement('input');
+    regenInput.type = 'number';
+    regenInput.min = '0';
+    regenInput.value = '0';
+    regenInput.required = true;
+    
+    // Shield group
+    const shieldGroup = document.createElement('div');
+    shieldGroup.className = 'form-group';
+    const shieldLabel = document.createElement('label');
+    shieldLabel.textContent = 'Shield:';
+    const shieldInput = document.createElement('input');
+    shieldInput.type = 'number';
+    shieldInput.min = '0';
+    shieldInput.value = '0';
+    shieldInput.required = true;
+    
+    // Add event listeners for real-time updates
+    const updateStats = () => {
+        const health = parseInt(healthInput.value) || 100;
+        const regen = parseInt(regenInput.value) || 0;
+        const shield = parseInt(shieldInput.value) || 0;
+        updatePlayerStats({ health, regen, shield });
+    };
+    
+    healthInput.addEventListener('change', updateStats);
+    regenInput.addEventListener('change', updateStats);
+    shieldInput.addEventListener('change', updateStats);
+    
+    // Assemble the form
+    healthGroup.appendChild(healthLabel);
+    healthGroup.appendChild(healthInput);
+    regenGroup.appendChild(regenLabel);
+    regenGroup.appendChild(regenInput);
+    shieldGroup.appendChild(shieldLabel);
+    shieldGroup.appendChild(shieldInput);
+    
+    form.appendChild(healthGroup);
+    form.appendChild(regenGroup);
+    form.appendChild(shieldGroup);
+    
+    container.appendChild(title);
+    container.appendChild(form);
+    
+    return container;
 }

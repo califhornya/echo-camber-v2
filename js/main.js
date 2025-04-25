@@ -9,7 +9,12 @@ const state = {
     get slots() { return window.playerBoard; },
     set slots(value) { window.playerBoard = value; },
     usedSlots: 0,
-    selectedMonster: coconutCrabBuild // Default monster
+    selectedMonster: coconutCrabBuild, // Default monster
+    playerStats: {
+        health: 100,  // Default values
+        regen: 0,
+        shield: 0     // Add shield
+    }
 };
 
 function init() {
@@ -110,11 +115,11 @@ function setupEventListeners() {
 }
 
 function handleCombatSimulation() {
-    // Debugging to see if this function is being called
     console.log("Simulate button clicked, creating simulator...");
     
     try {
-        const simulator = new CombatSimulator(state.slots, state.selectedMonster);
+        // Pass player stats to the simulator
+        const simulator = new CombatSimulator(state.slots, state.selectedMonster, state.playerStats);
         console.log("Simulator created, running simulation...");
         
         const results = simulator.simulateFight(1);
@@ -171,5 +176,16 @@ function changeMonster(monsterKey) {
     // Update the monster board display
     renderBoard('monster-board', true, state.selectedMonster);
 }
+
+// Add new function to handle stats updates
+function updatePlayerStats(newStats) {
+    state.playerStats = {
+        ...state.playerStats,
+        ...newStats
+    };
+}
+
+// Export for use in render.js
+export { updatePlayerStats };
 
 init();

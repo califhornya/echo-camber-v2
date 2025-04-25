@@ -1,5 +1,5 @@
 export class CombatSimulator {
-    constructor(playerBoard, monsterData) {
+    constructor(playerBoard, monsterData, playerStats) {
         this.time = 0;
         this.currentTime = 0;
         
@@ -8,28 +8,29 @@ export class CombatSimulator {
         this.currentTimeLogs = [];
         this.groupedLogs = [];
         
+        this.playerBoard = playerBoard;
+        this.monsterData = monsterData;
+        this.playerStats = playerStats || { health: 100, regen: 0, shield: 0 }; // Add shield default
+        
         this.playerState = {
-            hp: 100,
-            maxHp: 100,
-            shield: 0,
-            regen: { value: 0 },
-            burn: { value: 0 },
-            poison: { value: 0 },
-            slots: playerBoard.filter(Boolean),
+            health: this.playerStats.health,
+            maxHealth: this.playerStats.health,
+            regen: this.playerStats.regen,
+            shield: this.playerStats.shield, // Initialize with starting shield
+            items: [],
+            effects: [],
+            slots: this.playerBoard,
             processedSlots: new Set()
         };
         
-        // Add a direct reference to playerBoard for compatibility
-        this.playerBoard = playerBoard.filter(Boolean);
-        
         this.monsterState = {
-            hp: monsterData.health,
-            maxHp: monsterData.health,
+            health: monsterData.health,
+            maxHealth: monsterData.health,
+            regen: 0,
             shield: 0,
-            regen: { value: 0 },
-            burn: { value: 0 },
-            poison: { value: 0 },
-            slots: monsterData.slots.filter(Boolean),
+            items: [],
+            effects: [],
+            slots: monsterData.slots,
             processedSlots: new Set()
         };
         
@@ -112,15 +113,15 @@ export class CombatSimulator {
             this.time++;
             this.currentTime++;
 
-            if (this.playerState.hp <= 0 && this.monsterState.hp <= 0) {
+            if (this.playerState.health <= 0 && this.monsterState.health <= 0) {
                 this.log("Both players have been defeated!", "state");
                 return 'draw';
             }
-            if (this.playerState.hp <= 0) {
+            if (this.playerState.health <= 0) {
                 this.log("Player has been defeated!", "state");
                 return 'monster';
             }
-            if (this.monsterState.hp <= 0) {
+            if (this.monsterState.health <= 0) {
                 this.log("Monster has been defeated!", "state");
                 return 'player';
             }
@@ -161,8 +162,8 @@ export class CombatSimulator {
         this.applyDotEffects();
         this.processSpecialEffects();
 
-        this.log(`End of turn: Player - HP: ${this.playerState.hp}, Shield: ${this.playerState.shield}, Burn: ${this.playerState.burn.value}, Poison: ${this.playerState.poison.value}, Regen: ${this.playerState.regen.value}`, "state");
-        this.log(`End of turn: Monster - HP: ${this.monsterState.hp}, Shield: ${this.monsterState.shield}, Burn: ${this.monsterState.burn.value}, Poison: ${this.monsterState.poison.value}, Regen: ${this.monsterState.regen.value}`, "state");
+        this.log(`End of turn: Player - HP: ${this.playerState.health}, Shield: ${this.playerState.shield}, Burn: ${this.playerState.burn.value}, Poison: ${this.playerState.poison.value}, Regen: ${this.playerState.regen}`, "state");
+        this.log(`End of turn: Monster - HP: ${this.monsterState.health}, Shield: ${this.monsterState.shield}, Burn: ${this.monsterState.burn.value}, Poison: ${this.monsterState.poison.value}, Regen: ${this.monsterState.regen}`, "state");
 
         this.flushTimeLogs();
     }
@@ -364,7 +365,7 @@ export class CombatSimulator {
             // Special case for Infinite Potion
             const regenAmount = item.regenAmount || 
                                 (item.tiers && item.currentTier ? item.tiers[item.currentTier].regenAmount : 1);
-            sourceState.regen.value += regenAmount;
+            sourceState.regen += regenAmount;
             this.log(`${sourceName} gains ${regenAmount} regeneration per turn.`, 'heal');
             
             // Always reload Infinite Potion right after effect
@@ -468,7 +469,7 @@ export class CombatSimulator {
                                           (item.tiers && item.currentTier ? item.tiers[item.currentTier].regenAmount : 0);
                         
                         if (regenAmount > 0) {
-                            sourceState.regen.value += regenAmount;
+                            sourceState.regen += regenAmount;
                             this.log(`${sourceName} gains ${regenAmount} regeneration per turn.`, 'heal');
                         }
                     }
@@ -497,9 +498,9 @@ export class CombatSimulator {
                                            (item.tiers[item.currentTier].healAmount || item.tiers[item.currentTier].repairAmount) : 10);
                         
                         // Apply healing to source
-                        const prevHP = sourceState.hp;
-                        sourceState.hp = Math.min(sourceState.maxHp, sourceState.hp + healAmount);
-                        const actualHeal = sourceState.hp - prevHP;
+                        const prevHP = sourceState.health;
+                        sourceState.health = Math.min(sourceState.maxHealth, sourceState.health + healAmount);
+                        const actualHeal = sourceState.health - prevHP;
                         
                         if (actualHeal === 0) {
                             this.log(`${item.name} heals for ${healAmount}, but ${sourceName} already at full HP.`, 'heal');
@@ -623,7 +624,7 @@ export class CombatSimulator {
                 const shieldAbsorbed = Math.min(burnDamage, state.shield);
                 state.shield -= shieldAbsorbed;
                 const remainingBurnDamage = burnDamage - shieldAbsorbed;
-                state.hp -= remainingBurnDamage;
+                state.health -= remainingBurnDamage;
                 const totalDamage = shieldAbsorbed + remainingBurnDamage;
                 this.log(`${stateName} takes ${totalDamage} burn damage.`, 'burn');
                 
@@ -640,7 +641,7 @@ export class CombatSimulator {
     applyPoisonDamage(state, stateName) {
         if (state.poison.value > 0) {
             const poisonDamage = state.poison.value;
-            state.hp -= poisonDamage;
+            state.health -= poisonDamage;
             this.log(`${stateName} takes ${poisonDamage} poison damage`, 'poison');
         }
     }
@@ -648,30 +649,30 @@ export class CombatSimulator {
     applyDotEffects() {}
     processSpecialEffects() {}
     resetState() {
-        // Get custom values from the UI
-        const customMaxHp = parseInt(document.getElementById('player-max-hp')?.value) || 250;
-        const customRegen = parseInt(document.getElementById('player-starting-regen')?.value) || 0;
-        
         this.playerState = {
-            hp: customMaxHp,
-            maxHp: customMaxHp,
-            shield: 0,
-            poison: { value: 0 },
+            health: this.playerStats.health,
+            maxHealth: this.playerStats.health,
+            regen: this.playerStats.regen,
+            shield: this.playerStats.shield, // Reset to starting shield
+            items: [],
+            effects: [],
+            slots: this.playerBoard,
+            processedSlots: new Set(),
             burn: { value: 0 },
-            regen: { value: customRegen },
-            slots: this.playerState.slots,
-            processedSlots: this.playerState.processedSlots
+            poison: { value: 0 }
         };
 
         this.monsterState = {
-            hp: this.monsterState.maxHp,
-            maxHp: this.monsterState.maxHp,
+            health: this.monsterData.health,
+            maxHealth: this.monsterData.health,
+            regen: 0,
             shield: 0,
-            poison: { value: 0 },
+            items: [],
+            effects: [],
+            slots: this.monsterData.slots,
+            processedSlots: new Set(),
             burn: { value: 0 },
-            regen: { value: 0 },
-            slots: this.monsterState.slots,
-            processedSlots: this.monsterState.processedSlots
+            poison: { value: 0 }
         };
 
         // Fully reset all items to their original state
@@ -788,7 +789,7 @@ export class CombatSimulator {
         const remainingDamage = damage - shieldAbsorbed;
         
         // Apply the remaining damage to HP
-        targetState.hp -= remainingDamage;
+        targetState.health -= remainingDamage;
         
         // Log the shield absorption and damage
         if (shieldAbsorbed > 0) {
@@ -803,17 +804,13 @@ export class CombatSimulator {
     }
 
     applyRegeneration(state, stateName) {
-        if (state.regen.value > 0) {
-            // Calculate healing amount within maxHp cap
-            const missingHp = state.maxHp - state.hp;
-            const healAmount = Math.min(state.regen.value, missingHp);
-            
-            if (healAmount > 0) {
-                state.hp += healAmount;
-                this.log(`${stateName} regenerates ${healAmount} HP.`, 'heal');
-            } else if (state.regen.value > 0) {
-                this.log(`${stateName} is already at full health (regeneration wasted).`, 'heal');
-            }
+        const regenAmount = stateName === 'Player' ? this.playerStats.regen : state.regen;
+        if (regenAmount > 0 && state.health < state.maxHealth) {
+            const actualRegen = Math.min(regenAmount, state.maxHealth - state.health);
+            state.health += actualRegen;
+            this.log(`${stateName} regenerated ${actualRegen} HP`, 'heal');
+        } else if (regenAmount > 0) {
+            this.log(`${stateName} regen had no effect (HP already full)`, 'heal');
         }
     }
 
