@@ -1,6 +1,5 @@
 
-next to tackle: starting tier check, user can edit his stats (HP, regen)
-
+next to tackle: we need to adapt all items and check all the applyX logics
 bugs: 
 
 next commit:
