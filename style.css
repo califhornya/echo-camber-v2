@@ -1185,3 +1185,7 @@ body {
     background-color: #f5f5f5;
 }
 
+.log-freeze { 
+    color: #00bcd4; /* Ice blue color for freeze messages */
+}
+

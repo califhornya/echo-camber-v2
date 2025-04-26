@@ -30,6 +30,8 @@ import Lighter from '../assets/bazaar/vanessa/Lighter.js';
 // Mak items
 import InfinitePotion from '../assets/bazaar/mak/InfinitePotion.js';
 import Incense from '../assets/bazaar/mak/Incense.js';
+import FrostPotion from '../assets/bazaar/mak/FrostPotion.js';
+import RainbowPotion from '../assets/bazaar/mak/RainbowPotion.js';
 
 // Helper function to create tiered versions of items
 function createTieredItem(baseItem, tier) {
@@ -80,7 +82,9 @@ const bazaar = {
         
         // Mak items
         InfinitePotion,
-        Incense
+        Incense,
+        FrostPotion,
+        RainbowPotion
     ],
 
     searchItems(query) {

@@ -10,12 +10,12 @@ next commit:
 - [x] Ammo logic
 - [x] Burn logic
 - [x] Toxic logic, same as burn but 1 time per t and doesn't decay
-- [ ] Allow user to edit HP and regen
-- [ ] Allow user to edit items' values
+- [x] Allow user to edit HP and regen
+- [x] Allow user to edit items' values
 - [ ] Freeze logic
 - [ ] Haste logic
 - [ ] Slow logic
-- [ ] Regeneration logic
+- [x] Regeneration logic
 - [x] Heal logic
 - [x] Multicast logic
 - [x] Add 2 more monsters
@@ -45,8 +45,8 @@ next commit:
 
 ## 📈 Optimization
 - [ ] Refactor code to improve modularity and readability.
-- [ ] 0.2 s ticks to better simulate
-- [ ] All triggers, state ones too, they should all happen together
+- [x] 0.2 s ticks to better simulate
+- [x] All triggers, state ones too, they should all happen together
 
 
 ## 🧪 Testing

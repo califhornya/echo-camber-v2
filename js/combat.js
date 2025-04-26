@@ -115,6 +115,11 @@ export class CombatSimulator {
     }
 
     log(message, type = 'default') {
+        // Skip logging "out of ammo" messages
+        if (message.includes('cannot trigger (out of ammo)')) {
+            return;
+        }
+        
         this.currentTimeLogs.push({ message, type });
     }
 
@@ -138,18 +143,33 @@ export class CombatSimulator {
 
     displayLogs() {
         const logContainer = document.getElementById('combat-log');
-        logContainer.innerHTML = this.groupedLogs
-            .map(timeGroup => `
-                <div class="log-group">
-                    <div class="log-timestamp">Time: ${timeGroup.timestamp}s</div>
-                    ${timeGroup.actions.map(log => 
-                        `<div class="log-entry log-${log.type}">${log.message}</div>`
-                    ).join('')}
-                    ${timeGroup.status.map(log => 
-                        `<div class="log-status">${log.message}</div>`
-                    ).join('')}
-                </div>
-            `).join('');
+        
+        // Filter out timestamps with no actions
+        const significantLogs = this.groupedLogs.filter(timeGroup => 
+            timeGroup.actions.length > 0
+        );
+        
+        logContainer.innerHTML = significantLogs
+            .map(timeGroup => {
+                // Get the status logs that show HP/Shield/etc.
+                const statsLogs = timeGroup.status.filter(log => 
+                    log.message.includes('HP:') || 
+                    log.message.includes('Shield:')
+                );
+                
+                return `
+                    <div class="log-group">
+                        <div class="log-timestamp">Time: ${timeGroup.timestamp}s</div>
+                        ${timeGroup.actions.map(log => 
+                            `<div class="log-entry log-${log.type}">${log.message}</div>`
+                        ).join('')}
+                        ${statsLogs.map(log => 
+                            `<div class="log-status">${log.message}</div>`
+                        ).join('')}
+                    </div>
+                `;
+            }).join('');
+        
         logContainer.scrollTop = logContainer.scrollHeight;
     }
 
@@ -342,9 +362,10 @@ export class CombatSimulator {
         const currentTick = this.tickProcessor.currentTick;
         
         [...this.playerState.slots, ...this.monsterState.slots]
-            .filter(item => item && !item.isNonCombat && !this.isItemFrozen(item))
+            .filter(item => item && !item.isNonCombat)
             .forEach(item => {
-                if (currentTick >= item._nextTriggerTick) {
+                // Check if item is ready to trigger (not frozen and cooldown expired)
+                if (currentTick >= item._nextTriggerTick && !this.isItemFrozen(item)) {
                     const sourceState = this.playerState.slots.includes(item) ? this.playerState : this.monsterState;
                     const targetState = sourceState === this.playerState ? this.monsterState : this.playerState;
                     this.triggerItem(item, sourceState, targetState);
@@ -437,6 +458,22 @@ export class CombatSimulator {
                 this.log(`${sourceName}'s Sea Shell provides ${totalShield} shield (${aquaticCount} aquatic items × ${shieldPerAquatic} shield)`, 'shield');
             } else {
                 for (let i = 0; i < multicastCount; i++) {
+                    // Add freeze effect handling here, before damage
+                    if (item.freeze || (item.tiers && item.currentTier && item.tiers[item.currentTier].freeze)) {
+                        const freezeTargets = item.freezeTargets || 
+                                            (item.tiers && item.currentTier ? item.tiers[item.currentTier].freezeTargets : 1);
+                        const freezeDuration = item.freezeDuration || 
+                                             (item.tiers && item.currentTier ? item.tiers[item.currentTier].freezeDuration : 1);
+                        const freezeSize = item.freezeSize || 
+                                         (item.tiers && item.currentTier ? item.tiers[item.currentTier].freezeSize : undefined);
+                        
+                        this.applyFreeze({
+                            freezeTargets,
+                            freezeDuration,
+                            freezeSize
+                        }, targetState.slots);
+                    }
+
                     if (item.damage || (item.tiers && item.currentTier && item.tiers[item.currentTier].damage)) {
                         let damage = item.damage || item.tiers[item.currentTier].damage;
                         console.log(`[DEBUG] ${item.name} base damage: ${damage}`);
@@ -587,7 +624,16 @@ export class CombatSimulator {
     }
 
     isItemFrozen(item) {
-        return item._nextUnfreezeTick && this.tickProcessor.currentTick < item._nextUnfreezeTick;
+        if (!item || !item._nextUnfreezeTick) return false;
+        
+        const isFrozen = this.tickProcessor.currentTick < item._nextUnfreezeTick;
+        
+        // Debug logging to track freeze state
+        if (isFrozen) {
+            console.log(`[DEBUG] ${item.name} is frozen until tick ${item._nextUnfreezeTick} (current tick: ${this.tickProcessor.currentTick})`);
+        }
+        
+        return isFrozen;
     }
 
     countAquaticItems(items) {
@@ -625,19 +671,57 @@ export class CombatSimulator {
         return shieldValues.length > 0 ? Math.max(...shieldValues) : 0;
     }
 
-    applyFreeze(targetState, item) {
-        const targetItems = targetState === this.playerState ? this.playerState.slots : this.monsterState.slots;
-        const eligibleItems = targetItems.filter(i => i && (!i._nextUnfreezeTick || this.tickProcessor.currentTick < i._nextUnfreezeTick));
+    applyFreeze(freezeData, targetSlots) {
+        const { freezeTargets, freezeDuration, freezeSize } = freezeData;
         
-        if (eligibleItems.length === 0) return;
+        const validTargets = this.getRandomTargets(targetSlots, freezeSize);
+        if (validTargets.length === 0) return;
 
-        for (let i = 0; i < Math.min(item.freezeTargets || 1, eligibleItems.length); i++) {
-            const randomIndex = Math.floor(Math.random() * eligibleItems.length);
-            const targetItem = eligibleItems[randomIndex];
-            const freezeDuration = item.freezeDuration || 2;
-            targetItem._nextUnfreezeTick = this.tickProcessor.currentTick + secondsToTicks(freezeDuration);
-            eligibleItems.splice(randomIndex, 1);
+        // Apply freeze for the specified number of targets
+        for (let i = 0; i < freezeTargets; i++) {
+            const targetIndex = Math.floor(Math.random() * validTargets.length);
+            const target = validTargets[targetIndex];
+            
+            // Convert duration to ticks and store both current cooldown and freeze duration
+            const freezeDurationTicks = secondsToTicks(freezeDuration);
+            const currentCooldownTicks = target._nextTriggerTick - this.tickProcessor.currentTick;
+            
+            // Set next trigger time to after freeze expires
+            target._nextTriggerTick = this.tickProcessor.currentTick + freezeDurationTicks + currentCooldownTicks;
+            
+            // Store freeze expiration tick separately
+            target._nextUnfreezeTick = this.tickProcessor.currentTick + freezeDurationTicks;
+            
+            this.log(`${target.name} becomes frozen for ${freezeDuration} second(s)`, 'freeze');
+            
+            // Remove the target from valid targets to prevent freezing the same item twice
+            validTargets.splice(targetIndex, 1);
+            if (validTargets.length === 0) break;
         }
+    }
+
+    processFreeze() {
+        const currentTime = this.getCurrentTimeInSeconds();
+        
+        for (const state of [this.playerState, this.monsterState]) {
+            for (const item of state) {
+                if (!item || !item.freezeDuration) continue;
+
+                // Check if freeze should expire
+                if (currentTime >= item.nextUnfreeze) {
+                    item.freezeDuration = 0;
+                    item.nextUnfreeze = null;
+                    this.log(`${item.name} is no longer frozen`, 'freeze');
+                }
+            }
+        }
+    }
+
+    // Update isItemReady to handle frozen items
+    isItemReady(item) {
+        if (!item) return false;
+        if (item.freezeDuration > 0) return false;
+        return this.getCurrentTimeInSeconds() >= item.nextTrigger;
     }
 
     applyBurnDamage(state, stateName) {
@@ -856,6 +940,26 @@ export class CombatSimulator {
         state.poison = { 
             value: 0
         };
+    }
+
+    // Add helper method for random target selection
+    getRandomTargets(targetState, freezeSize) {
+        // Filter out null slots and radiant items
+        let validTargets = targetState.filter(item => {
+            if (!item) return false;
+            if (item.enchantment === 'radiant') {
+                this.log(`Radiant ${item.name} can't be frozen`, 'freeze');
+                return false;
+            }
+            if (freezeSize) {
+                if (freezeSize === 'small' && item.size !== 1) return false;
+                if (freezeSize === 'medium' && item.size !== 2) return false;
+                if (freezeSize === 'large' && item.size !== 3) return false;
+            }
+            return true;
+        });
+
+        return validTargets;
     }
 }
 
