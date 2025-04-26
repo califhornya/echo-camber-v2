@@ -1,10 +1,10 @@
 import { baseItem } from '../../../js/baseItem.js';
+import { getHighestShieldValue } from '../../../js/utils.js';
 
 const CrusherClaw = {
     ...baseItem,
     name: "Crusher Claw",
-    type: "Weapon",
-    secondaryType: "Aquatic",
+    type: "Aquatic",
     size: 2,
     currentTier: "Bronze", // Default tier
     image: "assets/images/CrusherClaw.webp",
@@ -39,6 +39,55 @@ const CrusherClaw = {
             shieldAmount: 15,
             shieldBonus: 8
         }
+    },
+    
+    // Add lifecycle methods
+    onPreTrigger(simulator, sourceState, targetState) {
+        // Calculate damage based on highest shield value
+        const sourceBoard = sourceState === simulator.playerState ? simulator.playerState.slots : simulator.monsterState.slots;
+        const highestShield = getHighestShieldValue(sourceBoard);
+        
+        // Store the calculated damage for use in onTrigger
+        this._calculatedDamage = highestShield;
+        simulator.log(`Crusher Claw found highest shield value: ${highestShield}`, 'trigger');
+    },
+
+    onTrigger(simulator, sourceState, targetState) {
+        // Apply the pre-calculated damage
+        if (this._calculatedDamage) {
+            simulator.applyDamage(targetState, this._calculatedDamage, 
+                targetState === simulator.playerState ? 'Player' : 'Monster', 
+                this.name);
+        }
+    },
+
+    onPostTrigger(simulator, sourceState, targetState) {
+        const sourceBoard = sourceState === simulator.playerState ? simulator.playerState.slots : simulator.monsterState.slots;
+        const sourceName = sourceState === simulator.playerState ? 'Player' : 'Monster';
+        const shieldBonus = this.tiers[this.currentTier].shieldBonus;
+    
+        sourceBoard.forEach(item => {
+            if (item && (item.shield === true || item.name === "Sea Shell")) {
+                if (item.name === "Sea Shell") {
+                    const currentPerAquatic = item.shieldPerAquatic || 
+                        (item.tiers && item.currentTier ? 
+                            item.tiers[item.currentTier].shieldPerAquatic : 5);
+                    // Update both the direct property and the tier property
+                    const newShieldPerAquatic = currentPerAquatic + shieldBonus;
+                    item.shieldPerAquatic = newShieldPerAquatic;
+                    if (item.tiers && item.currentTier) {
+                        item.tiers[item.currentTier].shieldPerAquatic = newShieldPerAquatic;
+                    }
+                    simulator.log(`${sourceName}'s Sea Shell now provides ${newShieldPerAquatic} shield per aquatic item`, 'shield');
+                } else {
+                    item.shieldAmount = (item.shieldAmount || 0) + shieldBonus;
+                    simulator.log(`${sourceName}'s ${item.name} gains +${shieldBonus} shield from Crusher Claw`, 'shield');
+                }
+            }
+        });
+
+        // Clean up the stored damage value
+        delete this._calculatedDamage;
     },
     
     // Helper method to get current tier values

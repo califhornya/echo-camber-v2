@@ -8,6 +8,11 @@ const baseItem = {
     trigger: "Cooldown",
     target: "enemy",
 
+    // Add lifecycle methods
+    onPreTrigger: null,
+    onTrigger: null,
+    onPostTrigger: null,
+
     damage: 0,
     poison: 0,
     burn: 0,

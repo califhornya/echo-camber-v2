@@ -35,18 +35,20 @@ import RainbowPotion from '../assets/bazaar/mak/RainbowPotion.js';
 
 // Helper function to create tiered versions of items
 function createTieredItem(baseItem, tier) {
-  if (!baseItem) return null;
-  
-  const tieredItem = cloneDeep(baseItem);
-  
-  // Set the tier in the appropriate property
-  if (tieredItem.currentTier !== undefined) {
+    if (!baseItem) return null;
+    
+    // Create deep clone of the item
+    const tieredItem = cloneDeep(baseItem);
+    
+    // Set the tier
     tieredItem.currentTier = tier;
-  } else {
-    tieredItem.tier = tier;
-  }
-  
-  return tieredItem;
+    
+    // Apply tier properties
+    if (tieredItem.tiers && tieredItem.tiers[tier]) {
+        Object.assign(tieredItem, tieredItem.tiers[tier]);
+    }
+    
+    return tieredItem;
 }
 
 // Create tier-specific versions of items needed for monster builds

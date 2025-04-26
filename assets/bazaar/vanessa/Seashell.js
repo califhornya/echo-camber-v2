@@ -1,4 +1,5 @@
 import { baseItem } from '../../../js/baseItem.js';
+import { countAquaticItems } from '../../../js/utils.js';
 
 const Seashell = {
     ...baseItem,
@@ -40,6 +41,25 @@ const Seashell = {
             shieldAmount: 0,
             shieldPerAquatic: 25
         }
+    },
+    
+    // Change to match CrusherClaw's method style
+    onPreTrigger(simulator, sourceState, targetState) {
+        const sourceBoard = sourceState === simulator.playerState ? simulator.playerState.slots : simulator.monsterState.slots;
+        const aquaticCount = countAquaticItems(sourceBoard);
+        const shieldPerAquatic = this.tiers[this.currentTier].shieldPerAquatic;
+        
+        this._calculatedShield = aquaticCount * shieldPerAquatic;
+        simulator.log(`Sea Shell found ${aquaticCount} aquatic items (${shieldPerAquatic} shield each)`, 'shield');
+    },
+
+    onTrigger(simulator, sourceState, targetState) {
+        sourceState.shield += this._calculatedShield;
+        simulator.log(`Sea Shell provides ${this._calculatedShield} shield`, 'shield');
+    },
+
+    onPostTrigger(simulator, sourceState, targetState) {
+        delete this._calculatedShield;
     },
     
     // Helper method to get current tier values
@@ -171,26 +191,4 @@ const Seashell = {
     }
 };
 
-// Create a proxy to intercept property access
-const SeashellProxy = new Proxy(Seashell, {
-    get(target, prop) {
-        // If the property exists on the object, return it
-        if (prop in target) {
-            const value = target[prop];
-            // If it's a method, bind it to the target
-            if (typeof value === 'function') {
-                return value.bind(target);
-            }
-            return value;
-        }
-        
-        // Check if the property exists in the current tier
-        if (target.tiers[target.currentTier] && prop in target.tiers[target.currentTier]) {
-            return target.tiers[target.currentTier][prop];
-        }
-        
-        return undefined;
-    }
-});
-
-export default SeashellProxy;
+export default Seashell;
