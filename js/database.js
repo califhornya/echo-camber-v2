@@ -16,13 +16,13 @@ import Hatchet from '../assets/bazaar/monsters/Hatchet.js';
 import ShoeBlade from '../assets/bazaar/monsters/ShoeBlade.js';
 import Lumboars from '../assets/bazaar/monsters/Lumboars.js';
 import SharpeningStone from '../assets/bazaar/monsters/SharpeningStone.js';
+import BarbedWire from '../assets/bazaar/monsters/BarbedWire.js';
 
 // Vanessa items
 import Seashell from '../assets/bazaar/vanessa/Seashell.js';
 import Cove from '../assets/bazaar/vanessa/Cove.js';
 import Katana from '../assets/bazaar/vanessa/Katana.js';
 import Cutlass from '../assets/bazaar/vanessa/Cutlass.js';
-import BarbedWire from '../assets/bazaar/vanessa/BarbedWire.js';
 import Grenade from '../assets/bazaar/vanessa/Grenade.js';
 import Trebuchet from '../assets/bazaar/vanessa/Trebuchet.js';
 import Lighter from '../assets/bazaar/vanessa/Lighter.js';
@@ -51,6 +51,51 @@ function createTieredItem(baseItem, tier) {
 
 // Create tier-specific versions of items needed for monster builds
 const SilverSeashell = createTieredItem(Seashell, "Silver");
+const GoldCoconut = createTieredItem(Coconut, "Gold");
+const GoldScrap = createTieredItem(Scrap, "Gold");
+const SilverJunkyardClub = createTieredItem(JunkyardClub, "Silver");
+const SilverJunkyardRepairbot = createTieredItem(JunkyardRepairbot, "Silver");
+const SilverBarbedWire = createTieredItem(BarbedWire, "Silver");
+const GoldMedKit = createTieredItem(MedKit, "Gold");
+
+// Create tier handler that automatically creates tiered versions of items
+const createTierHandler = {
+    get(target, prop) {
+        if (typeof prop !== 'string') return target[prop];
+        
+        const tierPrefixes = ['Bronze', 'Silver', 'Gold', 'Diamond'];
+        for (const prefix of tierPrefixes) {
+            if (prop.startsWith(prefix)) {
+                const itemName = prop.slice(prefix.length);
+                const item = target[itemName];
+                if (item) {
+                    return createTieredItem(item, prefix);
+                }
+            }
+        }
+        return target[prop];
+    }
+};
+
+// Create the items database with the proxy
+const items = {
+    Coconut,
+    Scrap,
+    MedKit,
+    GearnolaBar,
+    JunkyardClub,
+    JunkyardRepairbot,
+    Seashell,
+    BarbedWire,
+    OldSword,
+    TuskedHelm,
+    Hatchet,
+    ShoeBlade,
+    Lumboars,
+    SharpeningStone
+};
+
+const tieredItems = new Proxy(items, createTierHandler);
 
 // Database of all available items and their properties
 const bazaar = {
@@ -110,10 +155,10 @@ const coconutCrabBuild = {
         null,
         null,
         null,
-        Coconut,
+        tieredItems.GoldCoconut,
         CrusherClaw,
         null,
-        SilverSeashell, 
+        tieredItems.SilverSeashell,
         null,
         null,
         null
@@ -125,14 +170,14 @@ const rogueScrapper = {
     health: 450,
     slots: [
         null,
-        Scrap,
+        tieredItems.GoldScrap,
         GearnolaBar,
-        JunkyardClub,
-        null, // This slot is occupied by Junkyard Club (size 2)
-        JunkyardRepairbot,
-        null, // This slot is occupied by Junkyard Repairbot (size 2)
-        BarbedWire,
-        MedKit,
+        tieredItems.SilverJunkyardClub,
+        null,
+        tieredItems.SilverJunkyardRepairbot,
+        null,
+        tieredItems.SilverBarbedWire,
+        tieredItems.GoldMedKit,
         null
     ]
 };
@@ -142,11 +187,11 @@ const boarrior = {
     health: 300,
     slots: [
         null,
-        cloneDeep(Scrap), // Using cloneDeep to avoid referencing the same object
+        tieredItems.SilverScrap,
         TuskedHelm,
-        OldSword,
-        Hatchet,
-        ShoeBlade,
+        tieredItems.SilverOldSword,
+        tieredItems.SilverHatchet,
+        tieredItems.SilverShoeBlade,
         Lumboars,
         null, // Occupied by Lumboars (size 2)
         SharpeningStone,
@@ -159,5 +204,5 @@ export {
     coconutCrabBuild,
     rogueScrapper,
     boarrior,
-    SilverSeashell
+    tieredItems
 };

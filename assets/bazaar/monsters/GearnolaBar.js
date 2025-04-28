@@ -4,15 +4,71 @@ const GearnolaBar = {
     ...baseItem,
     name: "Gearnola Bar",
     type: "Food",
-    tier: "Bronze",
-    cooldown: 5.0,
     size: 1,
-    shield: true,
-    shieldAmount: 30,
-    maxAmmo: 2,
-    ammo: 2,
-    passive: "When you sell a Tool, this gains +1 Max Ammo.",
+    currentTier: "Bronze",
     image: "./assets/images/GearnolaBar.webp",
+    shield: true,
+    ammo: 2,
+    
+    tiers: {
+        Bronze: {
+            value: 1,
+            cooldown: 5.0,
+            shieldAmount: 30
+        },
+        Silver: {
+            value: 2,
+            cooldown: 5.0,
+            shieldAmount: 60
+        },
+        Gold: {
+            value: 4,
+            cooldown: 5.0,
+            shieldAmount: 90
+        },
+        Diamond: {
+            value: 8,
+            cooldown: 5.0,
+            shieldAmount: 120
+        }
+    },
+    
+    // Helper method to get current tier values
+    getTierValue(attribute) {
+        return this.tiers[this.currentTier][attribute];
+    },
+    
+    // Method to upgrade tier
+    upgradeTier() {
+        const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
+        const currentIndex = tierOrder.indexOf(this.currentTier);
+        if (currentIndex < tierOrder.length - 1) {
+            this.currentTier = tierOrder[currentIndex + 1];
+            return true;
+        }
+        return false;
+    },
+    
+    // Method to downgrade tier
+    downgradeTier() {
+        const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
+        const currentIndex = tierOrder.indexOf(this.currentTier);
+        if (currentIndex > 0) {
+            this.currentTier = tierOrder[currentIndex - 1];
+            return true;
+        }
+        return false;
+    },
+    
+    getDescription() {
+        const tier = this.tiers[this.currentTier];
+        return `Shield ${tier.shieldAmount}. Max Ammo: ${this.maxAmmo}.`;
+    },
+    
+    passive() {
+        return "When you sell a Tool, this gains +1 Max Ammo.";
+    },
+    
     enchantmentEffects: {
         heavy: {
             name: "Heavy",

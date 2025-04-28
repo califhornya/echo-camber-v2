@@ -5,13 +5,71 @@ const JunkyardRepairbot = {
     name: "Junkyard Repairbot",
     type: "Friend",
     secondaryType: "Tech",
-    tier: "Silver",
-    cooldown: 8.0,
     size: 2,
-    heal: true,
-    healAmount: 60,
-    passive: "When you sell this, your leftmost Heal item gains +15 Heal.",
+    currentTier: "Bronze",
     image: "./assets/images/JunkyardRepairbot.webp",
+    heal: true,
+    
+    tiers: {
+        Bronze: {
+            value: 2,
+            cooldown: 8.0,
+            healAmount: 30,
+            passiveGain: 5
+        },
+        Silver: {
+            value: 4,
+            cooldown: 8.0,
+            healAmount: 60,
+            passiveGain: 15
+        },
+        Gold: {
+            value: 8,
+            cooldown: 8.0,
+            healAmount: 120,
+            passiveGain: 30
+        },
+        Diamond: {
+            value: 16,
+            cooldown: 8.0,
+            healAmount: 240,
+            passiveGain: 50
+        }
+    },
+
+    getTierValue(attribute) {
+        return this.tiers[this.currentTier][attribute];
+    },
+    
+    upgradeTier() {
+        const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
+        const currentIndex = tierOrder.indexOf(this.currentTier);
+        if (currentIndex < tierOrder.length - 1) {
+            this.currentTier = tierOrder[currentIndex + 1];
+            return true;
+        }
+        return false;
+    },
+    
+    downgradeTier() {
+        const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
+        const currentIndex = tierOrder.indexOf(this.currentTier);
+        if (currentIndex > 0) {
+            this.currentTier = tierOrder[currentIndex - 1];
+            return true;
+        }
+        return false;
+    },
+    
+    getDescription() {
+        const tier = this.tiers[this.currentTier];
+        return `Heal ${tier.healAmount}. When you sell this, your leftmost Heal item gains +${tier.passiveGain} Heal.`;
+    },
+    
+    passive() {
+        return this.getDescription();
+    },
+
     enchantmentEffects: {
         heavy: {
             name: "Heavy",
@@ -47,10 +105,7 @@ const JunkyardRepairbot = {
         restorative: {
             name: "Restorative",
             effect: {
-                healAmount: 0,
-                scalingType: "multiplier",
-                scaler: "healAmount",
-                scalingValue: 2
+                healMultiplier: 2
             }
         },
         toxic: {

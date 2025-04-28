@@ -4,12 +4,74 @@ const JunkyardClub = {
     ...baseItem,
     name: "Junkyard Club",
     type: "Weapon",
-    tier: "Silver",
-    cooldown: 11.0,
     size: 2,
-    damage: 60,
-    passive: "When you sell this, your Weapons gain 6 Damage.",
+    currentTier: "Bronze",
     image: "./assets/images/JunkyardClub.webp",
+    
+    tiers: {
+        Bronze: {
+            value: 2,
+            cooldown: 11.0,
+            damage: 30,
+            passiveGain: 4
+        },
+        Silver: {
+            value: 4,
+            cooldown: 11.0,
+            damage: 60,
+            passiveGain: 6
+        },
+        Gold: {
+            value: 8,
+            cooldown: 11.0,
+            damage: 120,
+            passiveGain: 8
+        },
+        Diamond: {
+            value: 16,
+            cooldown: 11.0,
+            damage: 240,
+            passiveGain: 10
+        }
+    },
+    
+    // Helper method to get current tier values
+    getTierValue(attribute) {
+        return this.tiers[this.currentTier][attribute];
+    },
+    
+    // Method to upgrade tier
+    upgradeTier() {
+        const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
+        const currentIndex = tierOrder.indexOf(this.currentTier);
+        if (currentIndex < tierOrder.length - 1) {
+            this.currentTier = tierOrder[currentIndex + 1];
+            return true;
+        }
+        return false;
+    },
+    
+    // Method to downgrade tier
+    downgradeTier() {
+        const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
+        const currentIndex = tierOrder.indexOf(this.currentTier);
+        if (currentIndex > 0) {
+            this.currentTier = tierOrder[currentIndex - 1];
+            return true;
+        }
+        return false;
+    },
+    
+    // Generate a description based on the current tier
+    getDescription() {
+        const tier = this.tiers[this.currentTier];
+        return `Deal ${tier.damage} Damage. When you sell this, your Weapons gain ${tier.passiveGain} Damage.`;
+    },
+    
+    passive() {
+        return this.getDescription();
+    },
+
     enchantmentEffects: {
         heavy: {
             name: "Heavy",
