@@ -12,28 +12,24 @@ const Trebuchet = {
     
     tiers: {
         Bronze: {
-            cost: 6,
             value: 3,
             cooldown: 10.0,
             damage: 100,
             burn: 4
         },
         Silver: {
-            cost: 12,
             value: 6,
             cooldown: 10.0,
             damage: 200,
             burn: 8
         },
         Gold: {
-            cost: 24,
             value: 12,
             cooldown: 10.0,
             damage: 300,
             burn: 12
         },
         Diamond: {
-            cost: 48,
             value: 24,
             cooldown: 10.0,
             damage: 400,

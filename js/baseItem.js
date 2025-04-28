@@ -2,7 +2,6 @@ const baseItem = {
     name: "null",
     type: "null",
     tier: "Bronze",
-    cost: 0,
     cooldown: 0,
     size: 1,
     trigger: "Cooldown",

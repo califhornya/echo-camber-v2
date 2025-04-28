@@ -5,7 +5,6 @@ const Coconut = {
     name: "Coconut",
     type: "Food",
     tier: "Bronze",
-    cost: 2,
     cooldown: 0,
     size: 1,
     isNonCombat: true,

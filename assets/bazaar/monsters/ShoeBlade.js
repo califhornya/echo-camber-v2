@@ -6,7 +6,6 @@ const ShoeBlade = {
     type: "Weapon",
     secondaryType: "Apparel",
     tier: "Silver",
-    cost: 3,
     cooldown: 7.0,
     size: 1,
     damage: 40,

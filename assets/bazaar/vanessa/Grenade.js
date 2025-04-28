@@ -12,28 +12,24 @@ const Grenade = {
     
     tiers: {
         Bronze: {
-            cost: 2,
             value: 1,
             cooldown: 5.0,
             damage: 50,
             crit: 0.25
         },
         Silver: {
-            cost: 4,
             value: 2,
             cooldown: 5.0,
             damage: 100,
             crit: 0.25
         },
         Gold: {
-            cost: 8,
             value: 4,
             cooldown: 5.0,
             damage: 150,
             crit: 0.25
         },
         Diamond: {
-            cost: 16,
             value: 8,
             cooldown: 5.0,
             damage: 200,

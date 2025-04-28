@@ -16,7 +16,6 @@ const RainbowPotion = {
     
     tiers: {
         Silver: {
-            cost: 4,
             value: 2,
             cooldown: 7.0,
             burn: 3,
@@ -27,7 +26,6 @@ const RainbowPotion = {
             slowDuration: 2
         },
         Gold: {
-            cost: 8,
             value: 4,
             cooldown: 7.0,
             burn: 6,
@@ -38,7 +36,6 @@ const RainbowPotion = {
             slowDuration: 3
         },
         Diamond: {
-            cost: 16,
             value: 8,
             cooldown: 7.0,
             burn: 9,

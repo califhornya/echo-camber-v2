@@ -5,7 +5,6 @@ const JunkyardClub = {
     name: "Junkyard Club",
     type: "Weapon",
     tier: "Silver",
-    cost: 4,
     cooldown: 11.0,
     size: 2,
     damage: 60,

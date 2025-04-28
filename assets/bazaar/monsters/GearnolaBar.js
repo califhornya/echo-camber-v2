@@ -5,7 +5,6 @@ const GearnolaBar = {
     name: "Gearnola Bar",
     type: "Food",
     tier: "Bronze",
-    cost: 3,
     cooldown: 5.0,
     size: 1,
     shield: true,

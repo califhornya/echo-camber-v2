@@ -13,21 +13,18 @@ const FrostPotion = {
     
     tiers: {
         Silver: {
-            cost: 4,
             value: 2,
             cooldown: 6.0,
             freezeTargets: 1,
             freezeDuration: 1
         },
         Gold: {
-            cost: 8,
             value: 4,
             cooldown: 6.0,
             freezeTargets: 2,
             freezeDuration: 1
         },
         Diamond: {
-            cost: 16,
             value: 8,
             cooldown: 6.0,
             freezeTargets: 3,

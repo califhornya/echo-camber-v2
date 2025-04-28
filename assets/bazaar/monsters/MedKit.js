@@ -5,7 +5,6 @@ const MedKit = {
     name: "Med Kit",
     type: "Loot",
     tier: "Gold",
-    cost: 1,
     size: 1,
     isNonCombat: true,
     passive: "When you sell this, your leftmost Heal item gains 20 Heal.",

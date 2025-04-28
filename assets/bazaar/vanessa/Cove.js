@@ -5,44 +5,42 @@ const Cove = {
     name: "Cove",
     type: "Aquatic",
     size: 3,
-    currentTier: "Bronze", // Default tier
+    currentTier: "Bronze",
     image: "./assets/images/Cove.webp",
     shield: true,
     
     tiers: {
         Bronze: {
-            cost: 6,
-            value: 3, // sell value
+            value: 3,
             cooldown: 4.0,
-            shieldAmount: 3, // Base shield value
-            passiveValueGain: 1 // When you sell an item, gains +1 value
+            baseShieldAmount: 3,
+            tierMultiplier: 1
         },
         Silver: {
-            cost: 12,
             value: 6,
             cooldown: 4.0,
-            shieldAmount: 6,
-            passiveValueGain: 1
+            baseShieldAmount: 6,
+            tierMultiplier: 2
         },
         Gold: {
-            cost: 24,
             value: 12,
             cooldown: 4.0,
-            shieldAmount: 12,
-            passiveValueGain: 1
+            baseShieldAmount: 12,
+            tierMultiplier: 3
         },
         Diamond: {
-            cost: 48,
             value: 24,
             cooldown: 4.0,
-            shieldAmount: 24,
-            passiveValueGain: 2
+            baseShieldAmount: 24,
+            tierMultiplier: 4
         }
     },
     
-    // Helper method to get current tier values
-    getTierValue(attribute) {
-        return this.tiers[this.currentTier][attribute];
+    get shieldAmount() {
+        const tier = this.tiers[this.currentTier];
+        // Use the item's current value (which might be edited by player) 
+        // multiplied by the tier multiplier
+        return this.value * tier.tierMultiplier;
     },
     
     // Method to upgrade tier
@@ -53,7 +51,7 @@ const Cove = {
             this.currentTier = tierOrder[currentIndex + 1];
             return true;
         }
-        return false; // Already at max tier
+        return false;
     },
     
     // Method to downgrade tier
@@ -64,13 +62,13 @@ const Cove = {
             this.currentTier = tierOrder[currentIndex - 1];
             return true;
         }
-        return false; // Already at lowest tier
+        return false;
     },
     
     // Generate a description based on the current tier
     getDescription() {
         const tier = this.tiers[this.currentTier];
-        return `Shield equal to ${tier.shieldAmount} x this item's value. When you sell an item, this gains ${tier.passiveValueGain} value.`;
+        return `Shield equal to ${tier.tierMultiplier}x this item's value.`;
     },
     
     passive: function() {
@@ -169,26 +167,4 @@ const Cove = {
     }
 };
 
-// Create a proxy to intercept property access
-const CoveProxy = new Proxy(Cove, {
-    get(target, prop) {
-        // If the property exists on the object, return it
-        if (prop in target) {
-            const value = target[prop];
-            // If it's a method, bind it to the target
-            if (typeof value === 'function') {
-                return value.bind(target);
-            }
-            return value;
-        }
-        
-        // Check if the property exists in the current tier
-        if (target.tiers[target.currentTier] && prop in target.tiers[target.currentTier]) {
-            return target.tiers[target.currentTier][prop];
-        }
-        
-        return undefined;
-    }
-});
-
-export default CoveProxy;
+export default Cove;

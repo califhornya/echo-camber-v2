@@ -5,7 +5,6 @@ const OldSword = {
     name: "Old Sword",
     type: "Weapon",
     tier: "Silver",
-    cost: 3,
     cooldown: 5.0,
     size: 1,
     damage: 10,

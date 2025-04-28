@@ -6,7 +6,6 @@ const TuskedHelm = {
     type: "Weapon",
     secondaryType: "Apparel",
     tier: "Bronze",
-    cost: 4,
     cooldown: 10.0,
     size: 1,
     damage: 15,

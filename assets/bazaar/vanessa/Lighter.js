@@ -10,25 +10,21 @@ const Lighter = {
     
     tiers: {
         Bronze: {
-            cost: 2,
             value: 1,
             cooldown: 3.0,
             burn: 2
         },
         Silver: {
-            cost: 4,
             value: 2,
             cooldown: 3.0,
             burn: 4
         },
         Gold: {
-            cost: 8,
             value: 4,
             cooldown: 3.0,
             burn: 6
         },
         Diamond: {
-            cost: 16,
             value: 8,
             cooldown: 3.0,
             burn: 8

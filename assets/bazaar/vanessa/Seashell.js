@@ -13,28 +13,24 @@ const Seashell = {
     
     tiers: {
         Bronze: {
-            cost: 2,
             value: 1, // sell value
             cooldown: 6.0,
             shieldAmount: 0, // Base shield, will be calculated dynamically
             shieldPerAquatic: 10
         },
         Silver: {
-            cost: 4,
             value: 2,
             cooldown: 6.0,
             shieldAmount: 0,
             shieldPerAquatic: 15
         },
         Gold: {
-            cost: 8,
             value: 4,
             cooldown: 6.0,
             shieldAmount: 0,
             shieldPerAquatic: 20
         },
         Diamond: {
-            cost: 16,
             value: 8,
             cooldown: 6.0,
             shieldAmount: 0,

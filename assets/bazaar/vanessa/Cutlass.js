@@ -10,28 +10,24 @@ const Cutlass = {
     
     tiers: {
         Bronze: {
-            cost: 4,
             value: 2,
             cooldown: 6.0,
             damage: 10,
             multicast: 2
         },
         Silver: {
-            cost: 8,
             value: 4,
             cooldown: 6.0,
             damage: 20,
             multicast: 2
         },
         Gold: {
-            cost: 16,
             value: 8,
             cooldown: 6.0,
             damage: 30,
             multicast: 2
         },
         Diamond: {
-            cost: 32,
             value: 16,
             cooldown: 6.0,
             damage: 40,

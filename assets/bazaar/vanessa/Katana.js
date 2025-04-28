@@ -10,25 +10,21 @@ const Katana = {
     
     tiers: {
         Bronze: {
-            cost: 4,
             value: 2,
             cooldown: 2.0,
             damage: 5
         },
         Silver: {
-            cost: 8,
             value: 4,
             cooldown: 2.0,
             damage: 10
         },
         Gold: {
-            cost: 16,
             value: 8,
             cooldown: 2.0,
             damage: 15
         },
         Diamond: {
-            cost: 32,
             value: 16,
             cooldown: 2.0,
             damage: 20

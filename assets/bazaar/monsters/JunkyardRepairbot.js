@@ -6,7 +6,6 @@ const JunkyardRepairbot = {
     type: "Friend",
     secondaryType: "Tech",
     tier: "Silver",
-    cost: 4,
     cooldown: 8.0,
     size: 2,
     heal: true,

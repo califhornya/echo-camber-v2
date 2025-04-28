@@ -5,7 +5,6 @@ const Scrap = {
     name: "Scrap",
     type: "Loot",
     tier: "Bronze",
-    cost: 2,
     cooldown: 0,
     size: 1,
     isNonCombat: true,

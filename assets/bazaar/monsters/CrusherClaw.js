@@ -12,28 +12,24 @@ const CrusherClaw = {
     // Implement tier structure
     tiers: {
         Bronze: {
-            cost: 4,
             value: 2,
             cooldown: 9.0,
             shieldAmount: 15,
             shieldBonus: 2
         },
         Silver: {
-            cost: 8,
             value: 4,
             cooldown: 9.0,
             shieldAmount: 15,
             shieldBonus: 4
         },
         Gold: {
-            cost: 16,
             value: 8,
             cooldown: 9.0,
             shieldAmount: 15,
             shieldBonus: 6
         },
         Diamond: {
-            cost: 32,
             value: 16,
             cooldown: 9.0,
             shieldAmount: 15,

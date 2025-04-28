@@ -10,28 +10,24 @@ const BarbedWire = {
     
     tiers: {
         Bronze: {
-            cost: 3,
             value: 1.5,
             cooldown: 5.0,
             damage: 10,
             damageGain: 10 // When you Shield, this gains 10 Damage
         },
         Silver: {
-            cost: 6,
             value: 3,
             cooldown: 5.0,
             damage: 20,
             damageGain: 10
         },
         Gold: {
-            cost: 12,
             value: 6,
             cooldown: 5.0,
             damage: 30,
             damageGain: 10
         },
         Diamond: {
-            cost: 24,
             value: 12,
             cooldown: 5.0,
             damage: 40,

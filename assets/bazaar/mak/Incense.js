@@ -12,7 +12,6 @@ const Incense = {
     
     tiers: {
         Bronze: {
-            cost: 2,
             value: 1, // sell value
             cooldown: 6.0,
             slowTargets: 1,
@@ -20,7 +19,6 @@ const Incense = {
             regenAmount: 1
         },
         Silver: {
-            cost: 4,
             value: 2,
             cooldown: 6.0,
             slowTargets: 2,
@@ -28,7 +26,6 @@ const Incense = {
             regenAmount: 3
         },
         Gold: {
-            cost: 8,
             value: 4,
             cooldown: 6.0,
             slowTargets: 3,
@@ -36,7 +33,6 @@ const Incense = {
             regenAmount: 5
         },
         Diamond: {
-            cost: 16,
             value: 8,
             cooldown: 6.0,
             slowTargets: 4,

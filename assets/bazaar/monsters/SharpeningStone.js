@@ -5,7 +5,6 @@ const SharpeningStone = {
     name: "Sharpening Stone",
     type: "Loot",
     tier: "Bronze",
-    cost: 1,
     size: 1,
     isNonCombat: true,
     image: "./assets/images/SharpeningStone.webp"

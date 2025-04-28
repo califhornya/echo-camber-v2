@@ -5,7 +5,6 @@ const Lumboars = {
     name: "Lumboars",
     type: "Weapon",
     tier: "Bronze",
-    cost: 4,
     cooldown: 7.0,
     size: 2,
     damage: 10,

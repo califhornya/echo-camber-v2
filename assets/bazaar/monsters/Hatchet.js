@@ -6,7 +6,6 @@ const Hatchet = {
     type: "Weapon",
     secondaryType: "Tool",
     tier: "Silver",
-    cost: 3,
     cooldown: 6.0,
     size: 1,
     damage: 12,
