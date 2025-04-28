@@ -1,46 +1,44 @@
 import { baseItem } from '../../../js/baseItem.js';
 
-const Trebuchet = {
+const Calico = {
     ...baseItem,
-    name: "Trebuchet",
-    type: "Weapon",
-    size: 3,
-    currentTier: "Bronze", // Default tier
-    image: "./assets/images/Trebuchet.webp",
+    name: "Calico",
+    type: ["Friend", "Weapon"],
+    size: 1,
+    currentTier: "Bronze",
+    image: "./assets/images/Calico.webp",
     
     tiers: {
         Bronze: {
-            value: 3,
-            cooldown: 10.0,
-            damage: 100,
-            burn: 4
+            value: 1,
+            cooldown: 7.0,
+            damage: 10,
+            critGain: 0.05
         },
         Silver: {
-            value: 6,
-            cooldown: 10.0,
-            damage: 200,
-            burn: 8
+            value: 2,
+            cooldown: 7.0,
+            damage: 20,
+            critGain: 0.10
         },
         Gold: {
-            value: 12,
-            cooldown: 10.0,
-            damage: 300,
-            burn: 12
+            value: 4,
+            cooldown: 7.0,
+            damage: 30,
+            critGain: 0.15
         },
         Diamond: {
-            value: 24,
-            cooldown: 10.0,
-            damage: 400,
-            burn: 16
+            value: 8,
+            cooldown: 7.0,
+            damage: 40,
+            critGain: 0.20
         }
     },
     
-    // Helper method to get current tier values
     getTierValue(attribute) {
         return this.tiers[this.currentTier][attribute];
     },
     
-    // Method to upgrade tier
     upgradeTier() {
         const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
         const currentIndex = tierOrder.indexOf(this.currentTier);
@@ -48,10 +46,9 @@ const Trebuchet = {
             this.currentTier = tierOrder[currentIndex + 1];
             return true;
         }
-        return false; // Already at max tier
+        return false;
     },
     
-    // Method to downgrade tier
     downgradeTier() {
         const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
         const currentIndex = tierOrder.indexOf(this.currentTier);
@@ -59,39 +56,35 @@ const Trebuchet = {
             this.currentTier = tierOrder[currentIndex - 1];
             return true;
         }
-        return false; // Already at lowest tier
+        return false;
     },
     
-    // Generate a description based on the current tier
     getDescription() {
         const tier = this.tiers[this.currentTier];
-        return `Deal ${tier.damage} Damage. Apply ${tier.burn} Burn.`;
+        return `Deal ${tier.damage} Damage.\nWhen you use another Weapon, this gains +${Math.round(tier.critGain * 100)}% Crit Chance for the fight.\nThis deals double Crit Damage.`;
     },
-    
-    passive: function() {
-        return this.getDescription();
-    },
-    
+
     enchantmentEffects: {
         heavy: {
             name: "Heavy",
             effect: {
                 slowTargets: 1,
-                slowDuration: 3
+                slowDuration: 6
             }
         },
         icy: {
             name: "Icy",
             effect: {
                 freezeTargets: 1,
-                freezeDuration: 2
+                freezeDuration: 3,
+                freezeSize: "small"
             }
         },
         turbo: {
             name: "Turbo",
             effect: {
                 hasteTargets: 1,
-                hasteDuration: 3
+                hasteDuration: 6
             }
         },
         shielded: {
@@ -116,17 +109,18 @@ const Trebuchet = {
             name: "Toxic",
             effect: {
                 poison: 0,
-                scalingType: "equal",
-                scaler: "burn"
+                scalingType: "percentage",
+                scaler: "damage",
+                scalingValue: 0.1
             }
         },
         fiery: {
             name: "Fiery",
             effect: {
                 burn: 0,
-                scalingType: "multiplier",
-                scaler: "burn",
-                scalingValue: 2
+                scalingType: "percentage",
+                scaler: "damage",
+                scalingValue: 0.1
             }
         },
         shiny: {
@@ -138,7 +132,7 @@ const Trebuchet = {
         deadly: {
             name: "Deadly",
             effect: {
-                crit: 0.5
+                critBonusMultiplier: 2
             }
         },
         radiant: {
@@ -158,4 +152,4 @@ const Trebuchet = {
     }
 };
 
-export default Trebuchet; 
+export default Calico; 

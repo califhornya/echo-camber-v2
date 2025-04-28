@@ -26,6 +26,12 @@ import Cutlass from '../assets/bazaar/vanessa/Cutlass.js';
 import Grenade from '../assets/bazaar/vanessa/Grenade.js';
 import Trebuchet from '../assets/bazaar/vanessa/Trebuchet.js';
 import Lighter from '../assets/bazaar/vanessa/Lighter.js';
+import Ambergris from '../assets/bazaar/vanessa/Ambergris.js';
+import Barrel from '../assets/bazaar/vanessa/Barrel.js';
+import Bayonet from '../assets/bazaar/vanessa/Bayonet.js';
+import BeachBall from '../assets/bazaar/vanessa/BeachBall.js';
+import Bolas from '../assets/bazaar/vanessa/Bolas.js';
+import Calico from '../assets/bazaar/vanessa/Calico.js';
 
 // Mak items
 import InfinitePotion from '../assets/bazaar/mak/InfinitePotion.js';
@@ -109,6 +115,12 @@ const bazaar = {
         Grenade,
         Trebuchet,
         Lighter,
+        Ambergris,
+        Barrel,
+        Bayonet,
+        BeachBall,
+        Bolas,
+        Calico,
         
         // Monster items
         CrusherClaw,

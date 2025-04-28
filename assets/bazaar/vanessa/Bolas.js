@@ -1,46 +1,46 @@
 import { baseItem } from '../../../js/baseItem.js';
 
-const Trebuchet = {
+const Bolas = {
     ...baseItem,
-    name: "Trebuchet",
+    name: "Bolas",
     type: "Weapon",
-    size: 3,
-    currentTier: "Bronze", // Default tier
-    image: "./assets/images/Trebuchet.webp",
+    size: 1,
+    currentTier: "Bronze",
+    image: "./assets/images/Bolas.webp",
+    maxAmmo: 2,
+    ammo: 2,
     
     tiers: {
         Bronze: {
-            value: 3,
-            cooldown: 10.0,
-            damage: 100,
-            burn: 4
+            value: 1,
+            cooldown: 5.0,
+            damage: 40,
+            slowDuration: 2
         },
         Silver: {
-            value: 6,
-            cooldown: 10.0,
-            damage: 200,
-            burn: 8
+            value: 2,
+            cooldown: 5.0,
+            damage: 60,
+            slowDuration: 3
         },
         Gold: {
-            value: 12,
-            cooldown: 10.0,
-            damage: 300,
-            burn: 12
+            value: 4,
+            cooldown: 5.0,
+            damage: 80,
+            slowDuration: 4
         },
         Diamond: {
-            value: 24,
-            cooldown: 10.0,
-            damage: 400,
-            burn: 16
+            value: 8,
+            cooldown: 5.0,
+            damage: 100,
+            slowDuration: 5
         }
     },
     
-    // Helper method to get current tier values
     getTierValue(attribute) {
         return this.tiers[this.currentTier][attribute];
     },
     
-    // Method to upgrade tier
     upgradeTier() {
         const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
         const currentIndex = tierOrder.indexOf(this.currentTier);
@@ -48,10 +48,9 @@ const Trebuchet = {
             this.currentTier = tierOrder[currentIndex + 1];
             return true;
         }
-        return false; // Already at max tier
+        return false;
     },
     
-    // Method to downgrade tier
     downgradeTier() {
         const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
         const currentIndex = tierOrder.indexOf(this.currentTier);
@@ -59,39 +58,34 @@ const Trebuchet = {
             this.currentTier = tierOrder[currentIndex - 1];
             return true;
         }
-        return false; // Already at lowest tier
+        return false;
     },
     
-    // Generate a description based on the current tier
     getDescription() {
         const tier = this.tiers[this.currentTier];
-        return `Deal ${tier.damage} Damage. Apply ${tier.burn} Burn.`;
+        return `Deal ${tier.damage} Damage.\nSlow 1 item for ${tier.slowDuration} second(s).\nMax Ammo: ${this.maxAmmo}`;
     },
-    
-    passive: function() {
-        return this.getDescription();
-    },
-    
+
     enchantmentEffects: {
         heavy: {
             name: "Heavy",
             effect: {
-                slowTargets: 1,
-                slowDuration: 3
+                slowDurationMultiplier: 2
             }
         },
         icy: {
             name: "Icy",
             effect: {
                 freezeTargets: 1,
-                freezeDuration: 2
+                freezeDuration: 1,
+                freezeSize: "small"
             }
         },
         turbo: {
             name: "Turbo",
             effect: {
                 hasteTargets: 1,
-                hasteDuration: 3
+                hasteDuration: 2
             }
         },
         shielded: {
@@ -116,17 +110,18 @@ const Trebuchet = {
             name: "Toxic",
             effect: {
                 poison: 0,
-                scalingType: "equal",
-                scaler: "burn"
+                scalingType: "percentage",
+                scaler: "damage",
+                scalingValue: 0.1
             }
         },
         fiery: {
             name: "Fiery",
             effect: {
                 burn: 0,
-                scalingType: "multiplier",
-                scaler: "burn",
-                scalingValue: 2
+                scalingType: "percentage",
+                scaler: "damage",
+                scalingValue: 0.1
             }
         },
         shiny: {
@@ -158,4 +153,4 @@ const Trebuchet = {
     }
 };
 
-export default Trebuchet; 
+export default Bolas; 

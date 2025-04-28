@@ -1,46 +1,45 @@
 import { baseItem } from '../../../js/baseItem.js';
 
-const Trebuchet = {
+const Barrel = {
     ...baseItem,
-    name: "Trebuchet",
-    type: "Weapon",
-    size: 3,
-    currentTier: "Bronze", // Default tier
-    image: "./assets/images/Trebuchet.webp",
+    name: "Barrel",
+    type: "Item",
+    size: 2,
+    currentTier: "Bronze",
+    image: "./assets/images/Barrel.webp",
+    shield: true,
     
     tiers: {
         Bronze: {
-            value: 3,
-            cooldown: 10.0,
-            damage: 100,
-            burn: 4
+            value: 2,
+            cooldown: 5.0,
+            shieldAmount: 20,
+            passiveGain: 10
         },
         Silver: {
-            value: 6,
-            cooldown: 10.0,
-            damage: 200,
-            burn: 8
+            value: 4,
+            cooldown: 5.0,
+            shieldAmount: 20,
+            passiveGain: 15
         },
         Gold: {
-            value: 12,
-            cooldown: 10.0,
-            damage: 300,
-            burn: 12
+            value: 8,
+            cooldown: 5.0,
+            shieldAmount: 20,
+            passiveGain: 20
         },
         Diamond: {
-            value: 24,
-            cooldown: 10.0,
-            damage: 400,
-            burn: 16
+            value: 16,
+            cooldown: 5.0,
+            shieldAmount: 20,
+            passiveGain: 25
         }
     },
     
-    // Helper method to get current tier values
     getTierValue(attribute) {
         return this.tiers[this.currentTier][attribute];
     },
     
-    // Method to upgrade tier
     upgradeTier() {
         const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
         const currentIndex = tierOrder.indexOf(this.currentTier);
@@ -48,10 +47,9 @@ const Trebuchet = {
             this.currentTier = tierOrder[currentIndex + 1];
             return true;
         }
-        return false; // Already at max tier
+        return false;
     },
     
-    // Method to downgrade tier
     downgradeTier() {
         const tierOrder = ["Bronze", "Silver", "Gold", "Diamond"];
         const currentIndex = tierOrder.indexOf(this.currentTier);
@@ -59,48 +57,41 @@ const Trebuchet = {
             this.currentTier = tierOrder[currentIndex - 1];
             return true;
         }
-        return false; // Already at lowest tier
+        return false;
     },
     
-    // Generate a description based on the current tier
     getDescription() {
         const tier = this.tiers[this.currentTier];
-        return `Deal ${tier.damage} Damage. Apply ${tier.burn} Burn.`;
+        return `Shield ${tier.shieldAmount}.\nWhen you use an adjacent non-Weapon item, this gains ${tier.passiveGain} Shield for the fight.`;
     },
-    
-    passive: function() {
-        return this.getDescription();
-    },
-    
+
     enchantmentEffects: {
         heavy: {
             name: "Heavy",
             effect: {
-                slowTargets: 1,
-                slowDuration: 3
+                slowTargets: 2,
+                slowDuration: 2
             }
         },
         icy: {
             name: "Icy",
             effect: {
                 freezeTargets: 1,
-                freezeDuration: 2
+                freezeDuration: 1,
+                freezeSize: "medium"
             }
         },
         turbo: {
             name: "Turbo",
             effect: {
-                hasteTargets: 1,
-                hasteDuration: 3
+                hasteTargets: 2,
+                hasteDuration: 2
             }
         },
         shielded: {
             name: "Shielded",
             effect: {
-                shield: true,
-                shieldAmount: 0,
-                scalingType: "equal",
-                scaler: "damage"
+                shieldMultiplier: 2
             }
         },
         restorative: {
@@ -109,24 +100,25 @@ const Trebuchet = {
                 heal: true,
                 healAmount: 0,
                 scalingType: "equal",
-                scaler: "damage"
+                scaler: "shield"
             }
         },
         toxic: {
             name: "Toxic",
             effect: {
                 poison: 0,
-                scalingType: "equal",
-                scaler: "burn"
+                scalingType: "percentage",
+                scaler: "shield",
+                scalingValue: 0.1
             }
         },
         fiery: {
             name: "Fiery",
             effect: {
                 burn: 0,
-                scalingType: "multiplier",
-                scaler: "burn",
-                scalingValue: 2
+                scalingType: "percentage",
+                scaler: "shield",
+                scalingValue: 0.1
             }
         },
         shiny: {
@@ -152,10 +144,12 @@ const Trebuchet = {
         obsidian: {
             name: "Obsidian",
             effect: {
-                damageMultiplier: 2
+                damage: 0,
+                scalingType: "equal",
+                scaler: "shield"
             }
         }
     }
 };
 
-export default Trebuchet; 
+export default Barrel; 

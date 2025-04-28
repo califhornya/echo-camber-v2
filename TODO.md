@@ -1,5 +1,5 @@
 
-next to tackle: starting tier check, user can edit his stats (HP, regen)
+next to tackle: cove doesn't work, adiajents logic (bayonet example)
 
 bugs: 
 
